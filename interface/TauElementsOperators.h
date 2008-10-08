@@ -8,7 +8,7 @@
 #include "RecoTauTag/TauTagTools/interface/ElementsInAnnulus.h"
 
 #include "PhysicsTools/IsolationUtils/interface/FixedAreaIsolationCone.h"
-#include "PhysicsTools/Utilities/interface/DeltaR.h"
+#include "PhysicsTools/Utilities/interface/deltaR.h"
 #include "PhysicsTools/Utilities/interface/Angle.h"
 
 #include "TFormula.h"
@@ -19,6 +19,7 @@ using namespace reco;
 
 class TauElementsOperators{
  public:
+  TauElementsOperators();
   TauElementsOperators(BaseTau&);
   ~TauElementsOperators(){}   
   // compute size of signal cone possibly depending on E(energy) and/or ET(transverse energy) of the tau-jet candidate
@@ -47,6 +48,8 @@ class TauElementsOperators{
 				    string signalConeMetric,double signalConeSize,string isolationConeMetric,double isolationConeSize, 
 				    unsigned int isolationAnnulus_Tracksmaxn)const;
  protected:
+    TFormula ConeSizeTFormula;
+
   BaseTau& BaseTau_;
   double AreaMetric_recoElements_maxabsEta_;
   TrackRefVector Tracks_;  // track selection criteria applied
@@ -61,6 +64,8 @@ class TauElementsOperators{
   ElementsInAnnulus<math::XYZVector,Angle<math::XYZVector>,Angle<math::XYZVector>,reco::TrackCollection> TracksinAnnulus_innerAngleouterAnglemetrics_;
   ElementsInAnnulus<math::XYZVector,Angle<math::XYZVector>,DeltaR<math::XYZVector>,reco::TrackCollection> TracksinAnnulus_innerAngleouterDRmetrics_; 
 };
+
+
 #endif
 
 // * different possible metrics for a cone : "DR", "angle", "area"; 
