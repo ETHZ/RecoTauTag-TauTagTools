@@ -6,10 +6,7 @@
 <use name=FWCore/ParameterSet>
 <use name=FWCore/PluginManager>
 <use name=PhysicsTools/IsolationUtils>
-<use name=PhysicsTools/Utilities>
 <use name=TrackingTools/GeomPropagators>
-<use name=TrackingTools/TransientTrack>
-<use name=RecoVertex/VertexPrimitives>
 <use name=root>
 <export>
   <use name=DataFormats/BTauReco>
@@ -17,10 +14,7 @@
   <use name=FWCore/Framework>
   <use name=FWCore/MessageLogger>
   <use name=FWCore/ParameterSet>
-  <use name=TrackingTools/TransientTrack>
-  <use name=RecoVertex/VertexPrimitives>
   <use name=PhysicsTools/IsolationUtils>
-  <use name=PhysicsTools/Utilities>
   <lib name=RecoTauTagTauTagTools>
 </export>
 
