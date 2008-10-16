@@ -31,7 +31,8 @@
     * Alt$(ChargedOutlierPt[0], 0) < 1.5  Don't train on non-charge isolated taus.  (Taus that have very low Pt isolation activity will still be used for training)
     */
 
-   string cut = "!__ISNULL__ && !__PREPASS__ && !__PREFAIL__ && TrackPt@.size() != 1 && DecayMode < 13 && Alt$(NeutralOutlierPt[0], 0) < 1.5 && Alt$(ChargedOutlierPt[0], 0) < 1";
+   //string cut = "!__ISNULL__ && !__PREPASS__ && !__PREFAIL__ && TrackPt@.size() != 1 && DecayMode < 13 && Alt$(NeutralOutlierPt[0], 0) < 1.5 && Alt$(ChargedOutlierPt[0], 0) < 1";
+   string cut = "!__ISNULL__ && !__PREPASS__ && !__PREFAIL__ && TrackPt@.size() != 1 && DecayMode < 13";
 
 
    TChain* signalChain = new TChain(SignalRecoTreeName.c_str());
