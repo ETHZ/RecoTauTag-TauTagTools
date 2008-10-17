@@ -1,8 +1,8 @@
 '''
-BuildQCD_cfg.py
+GenerateAndDiscriminateQCD_cfg.py.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 
-Build background ROOT files to support TauMVA training
+Test trained MVA file on background sample
 
 Sequence:
    Pythia QCD 2->2 events using user supplied Min/Max Pt hat.
@@ -10,27 +10,52 @@ Sequence:
    Particle Flow
    Standard HighEfficiency Tau sequence
    Tau Decay mode reconstruction 
-   MC Truth Tau DecayMode production
-   MC Truth Tau DecayMode <-> reco::PFTau matching
-   ROOT trees of discriminant outputs applied
+   MC Truth Tau DecayMode production                   (not required but helpful for studies) 
+   MC Truth Tau DecayMode <-> reco::PFTau matching     (not required but helpful for studies) 
+   Production of PFTauDiscriminator matching MVA output to PFTaus
 '''
 import FWCore.ParameterSet.Config as cms
-
 process = cms.Process("TauMVA")
 
 batchNumber=1
 jobNumber=1
 minPtHat = 30
 maxPtHat = 50
-nEvents = 100
+nEvents = 1000
 rootFileOutputPath="./"
 
-#for batch running on condor (see shell scripts)
+#uncomment for batch running on condor (see shell script examples)
+'''
 batchNumber=RPL_BATCH
 jobNumber=RPL_RUN
 minPtHat=RPL_MINPT
 maxPtHat=RPL_MAXPT
 nEvents=RPL_EVENTS
+'''
+
+'''
+****************************************************
+*****   Retrieve MVA from Conditions DB   **********
+****************************************************
+*****   Important fields:                 **********
+*****      connect string                 **********
+*****      database tag                   **********
+****************************************************
+'''
+from CondCore.DBCommon.CondDBSetup_cfi import *
+
+process.TauMVAFromDB = cms.ESSource("PoolDBESSource",
+	CondDBSetup,
+	timetype = cms.untracked.string('runnumber'),
+	toGet = cms.VPSet(cms.PSet(
+		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
+		tag = cms.string('MyTestMVATag')
+	)),
+	connect = cms.string('sqlite_file:Example.db'),
+	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService')
+)
+# necessary to prevent conflict w/ Fake BTau conditions
+process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauMVAFromDB")
 
 #get a random number from the batch/job number for reproducibility (not robust)
 import random
@@ -83,8 +108,6 @@ process.source = cms.Source("PythiaSource",
 process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 # Famos sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
-# Parametrized magnetic field (new mapping, 4.0 and 3.8T)
-#process.load("Configuration.StandardSequences.MagneticField_40T_cff")
 process.load("Configuration.StandardSequences.MagneticField_38T_cff")
 process.VolumeBasedMagneticFieldESProducer.useParametrizedTrackerField = True
 
@@ -115,8 +138,17 @@ process.p1 = cms.Path(process.main*
                       process.pfTauDecayModeHighEfficiency*
                       process.makeMCQCD*
                       process.matchMCQCDHighEfficiency*
-                      process.tauMVATrainerBackground)
+                      process.tauMVADiscriminatorHighEfficiency)
 
+
+process.o1 = cms.OutputModule(
+    "PoolOutputModule",
+    fileName = cms.untracked.string("QCD_Discriminated_%i_%i.root" % (batchNumber, jobNumber)),
+    outputCommands = cms.untracked.vstring("keep *",
+                                           "drop *_mix_*_*")
+    )
+
+process.outpath = cms.EndPath(process.o1)
 
 process.MessageLogger = cms.Service("MessageLogger",
     info_RPL_BATCH_RPL_RUN = cms.untracked.PSet(

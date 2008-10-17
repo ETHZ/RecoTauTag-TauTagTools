@@ -1,3 +1,19 @@
+'''
+BuildSignal_cfg.py
+Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
+
+Build signal ROOT files to support TauMVA training
+
+Sequence:
+   Pythia Z->tautau (both taus decay hadronically) events
+   Simulation done w/ FastSim package
+   Particle Flow
+   Standard HighEfficiency Tau sequence
+   Tau Decay mode reconstruction 
+   MC Truth Tau DecayMode production
+   MC Truth Tau DecayMode <-> reco::PFTau matching
+   ROOT trees of discriminant outputs applied
+'''
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process("TauMVA")
