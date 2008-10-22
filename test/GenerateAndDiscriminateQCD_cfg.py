@@ -138,14 +138,29 @@ process.p1 = cms.Path(process.main*
                       process.pfTauDecayModeHighEfficiency*
                       process.makeMCQCD*
                       process.matchMCQCDHighEfficiency*
-                      process.tauMVADiscriminatorHighEfficiency)
+                      process.pfRecoTauDiscriminationByMVAHighEfficiency)
 
+#keeps/drops
+from RecoTauTag.Configuration.RecoTauTag_EventContent_cff import *
+from RecoParticleFlow.Configuration.RecoParticleFlow_EventContent_cff import *
+
+myOutputCommands = cms.untracked.vstring(
+   'drop *'
+   ,'keep *_genParticles*_*_*'
+   ,'keep *_pfTauDecayMode*_*_*'
+   ,'keep *_matchMCTau*_*_*'
+   ,'keep *_matchMCQCD*_*_*'
+   ,'keep *_makeMCTau*_*_*'
+   ,'keep *_makeMCQCD*_*_*'
+   ) 
+
+myOutputCommands.extend(RecoTauTagFEVT.outputCommands)
+myOutputCommands.extend(RecoParticleFlowFEVT.outputCommands)
 
 process.o1 = cms.OutputModule(
     "PoolOutputModule",
     fileName = cms.untracked.string("QCD_Discriminated_%i_%i.root" % (batchNumber, jobNumber)),
-    outputCommands = cms.untracked.vstring("keep *",
-                                           "drop *_mix_*_*")
+    outputCommands = myOutputCommands
     )
 
 process.outpath = cms.EndPath(process.o1)
