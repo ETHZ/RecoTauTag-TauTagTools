@@ -1,0 +1,8 @@
+universe = vanilla
+Executable = RunBkgJob.sh
+should_transfer_files = NO
+Output = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).stdout
+Error  = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).stderr
+Log    = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).condor
+Arguments = $(cluster) $(process) RPL_EVENTS  RPL_MINPT RPL_MAXPT
+Queue RPL_JOBS

@@ -1,0 +1,8 @@
+universe = vanilla
+Executable = RunSignalJob.sh
+should_transfer_files = NO
+Output = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).stdout
+Error  = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).stderr
+Log    = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).condor
+Arguments = $(cluster) $(process) RPL_EVENTS 
+Queue RPL_JOBS
