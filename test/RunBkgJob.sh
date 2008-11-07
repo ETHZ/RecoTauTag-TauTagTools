@@ -3,6 +3,11 @@
 # A script for running the TauMVA examples in the condor batch framework.
 # Author: Evan Friis, UC Davis
 
+# Edit for your local machine setup....
+export SCRAM_ARCH='slc4_ia32_gcc345'
+export VO_CMS_SW_DIR='/raid1/cmssw'
+source $VO_CMS_SW_DIR/cmsset_default.sh
+
 if [ ! -n "$5" ]
 then
   echo "Produce background (QCD 2->2) MVA training data for the Tau MVA framework - the CMS job as specified in BuildQCD.py"
@@ -10,6 +15,7 @@ then
   exit 65
 fi  
 
+whoami
 
 echo "Scramming..."
 eval `scramv1 runtime -sh`
@@ -24,13 +30,17 @@ fi
 echo "Working directory is ${DATALOCATION}"
 
 FILENAME=run_${1}_${2}.py
-rm $DATALOCATION/$FILENAME
+
+if [ -f $DATALOCATION/$FILENAME ] 
+then
+   rm $DATALOCATION/$FILENAME
+fi
 
 cat BuildQCD_cfg.py | sed "s|RPL_BATCH|${1}|" | sed "s|RPL_RUN|${2}|" | sed "s|RPL_EVENTS|${3}|" | sed "s|RPL_MINPT|${4}|" | sed "s|RPL_MAXPT|${5}|" > $DATALOCATION/run_${1}_${2}.py
 
 cd $DATALOCATION
 
-if [ ! -d "finishedJobs" ]
+if [ ! -d "finishedJobsBackground" ]
 then
    mkdir finishedJobsBackground
 fi
@@ -38,3 +48,13 @@ fi
 cmsRun run_${1}_${2}.py 
 
 mv *_${1}_${2}.root finishedJobsBackground/
+
+#cleanup
+if [ ! -d "logfiles" ]
+then
+   mkdir logfiles
+fi
+
+mv $DATALOCATION/$FILENAME logfiles/
+mv info_$1_$2.log logfiles/
+

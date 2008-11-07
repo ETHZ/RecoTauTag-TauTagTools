@@ -34,7 +34,7 @@ nEvents=RPL_EVENTS
 
 #get a random number from the batch/job number for reproducibility (not robust)
 import random
-random.seed(batchNumber+1)
+random.seed(batchNumber)
 rand1=random.randint(0, 10000)
 random.seed(jobNumber)
 rand2=random.randint(0, 10000)
@@ -104,7 +104,7 @@ process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
 process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
 process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi")
-process.tauMVATrainerBackground.outputRootFileName="%s/output_%i_%i.root" % (rootFileOutputPath, batchNumber, jobNumber)
+process.tauMVATrainerBackground.outputRootFileName="%s/output_%i_%i_%i_%i.root" % (rootFileOutputPath, minPtHat, maxPtHat, batchNumber, jobNumber)
 
 
 process.p1 = cms.Path(process.main*
@@ -120,14 +120,9 @@ process.p1 = cms.Path(process.main*
 
 process.MessageLogger = cms.Service("MessageLogger",
     info_RPL_BATCH_RPL_RUN = cms.untracked.PSet(
-        threshold = cms.untracked.string('INFO'),
-        limit = cms.untracked.int32(100)
+        threshold = cms.untracked.string('WARNING'),
     ),
-    cerr = cms.untracked.PSet(
-        threshold = cms.untracked.string('ERROR')
-    ),
-    destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN', 
-        'cerr')
+    destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN')
 )
 # Make the job crash in case of missing product
 process.options = cms.untracked.PSet( Rethrow = cms.untracked.vstring('ProductNotFound') )

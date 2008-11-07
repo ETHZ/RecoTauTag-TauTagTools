@@ -5,9 +5,14 @@
 
 import os
 
+'''
 nEventsPerJob = 500
 totalJobs     = 100
 switchEvery   = 10
+'''
+nEventsPerJob = 1000
+totalJobs     = 50 
+switchEvery   = 10 
 
 signalBlock =  ( "SubmitSignal.jdl" , nEventsPerJob , 0  , 0  ) 
 vlowQCD     =  ( "SubmitBkg.jdl"    , nEventsPerJob , 5  , 20 ) 

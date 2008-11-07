@@ -103,13 +103,9 @@ process.p1 = cms.Path(process.main*
 
 process.MessageLogger = cms.Service("MessageLogger",
     info_RPL_BATCH_RPL_RUN = cms.untracked.PSet(
-        threshold = cms.untracked.string('INFO'),
+        threshold = cms.untracked.string('WARNING'),
     ),
-    cerr = cms.untracked.PSet(
-        threshold = cms.untracked.string('ERROR')
-    ),
-    destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN', 
-        'cerr')
+    destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN')
 )
 # Make the job crash in case of missing product
 process.options = cms.untracked.PSet( Rethrow = cms.untracked.vstring('ProductNotFound') )
