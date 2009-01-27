@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Generate a local mysql database with the correct schema for holding 
+# TauMVA objects
+
 eval `scramv1 runtime -sh`
 
 pool_build_object_relational_mapping \

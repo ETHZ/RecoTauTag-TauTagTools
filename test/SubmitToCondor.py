@@ -1,5 +1,3 @@
-#!/bin/env python
-
 # Submit signal and background events to the condor batch system
 # Author Evan K. Friis, UC Davis (friis@physics.ucdavis.edu)
 
@@ -11,8 +9,8 @@ totalJobs     = 100
 switchEvery   = 10
 '''
 nEventsPerJob = 1000
-totalJobs     = 50 
-switchEvery   = 10 
+totalJobs     = 60
+switchEvery   = 5
 
 signalBlock =  ( "SubmitSignal.jdl" , nEventsPerJob , 0  , 0  ) 
 vlowQCD     =  ( "SubmitBkg.jdl"    , nEventsPerJob , 5  , 20 ) 
@@ -21,6 +19,8 @@ midQCD      =  ( "SubmitBkg.jdl"    , nEventsPerJob , 30 , 50 )
 highQCD     =  ( "SubmitBkg.jdl"    , nEventsPerJob , 50 , 80 ) 
 
 submitters = [signalBlock, lowQCD, midQCD, highQCD]
+#submitters = [ lowQCD, midQCD, highQCD]
+#submitters = [signalBlock,  midQCD]
 
 eventsSubmitted = 0
 

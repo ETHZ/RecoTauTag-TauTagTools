@@ -93,12 +93,21 @@ process.famosPileUp.PileUpSimulator.averageNumber = 0.0
 process.famosSimHits.SimulateCalorimetry = True
 process.famosSimHits.SimulateTracking = True
 
+#material effects
+#process.famosSimHits.PairProduction     = cms.bool(False)
+#process.famosSimHits.Bremsstrahlung     = cms.bool(False)
+#process.famosSimHits.EnergyLoss         = cms.bool(False)
+#process.famosSimHits.NuclearInteraction = cms.bool(False)
+
+process.Timing = cms.Service("Timing")
+
 # Simulation sequence
 process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 
 process.main = cms.Sequence(process.genParticles*process.genParticlesForJets*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
+#process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")
 process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeteriminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
@@ -109,12 +118,13 @@ process.tauMVATrainerBackground.outputRootFileName="%s/output_%i_%i_%i_%i.root" 
 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
-                      process.PFTauHighEfficiency*
+                      process.PFTau*
+#                      process.insideOutJets*
+#                      process.pfRecoTauTagInfoProducerInsideOut*
 #                      process.pfRecoTauProducerInsideOut*
 #                      process.pfTauDecayModeInsideOut*
-                      process.pfTauDecayModeHighEfficiency*
                       process.makeMCQCD*
-                      process.matchMCQCDHighEfficiency*
+                      process.matchMCQCD*
                       process.tauMVATrainerBackground)
 
 
