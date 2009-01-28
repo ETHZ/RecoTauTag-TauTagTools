@@ -30,6 +30,15 @@ OutlierNCharged::doComputation(PFTauDiscriminantManager* input, vector<int>& res
 }
 
 void
+OutlierN::doComputation(PFTauDiscriminantManager* input, vector<int>& result)
+{
+   const vector<const reco::Candidate*>& theOutlierObjects = input->outlierObjectsSortedByPt();
+   size_t output = theOutlierObjects.size();
+   // convert to int for TTree
+   result.push_back(static_cast<int>(output));
+}
+
+void
 Pt::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
 {
    result.push_back(input->getDecayMode()->pt());
@@ -93,6 +102,63 @@ PiZeroPt::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
          result.push_back(currentObject->pt());
    }
 }
+
+void
+FilteredObjectPt::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   const reco::PFTauDecayMode* theDecayMode = input->getDecayMode();
+   if (!theDecayMode)
+      return;
+
+   const vector<const reco::Candidate*> theFilteredObjects = theDecayMode->filteredObjectCandidates();
+
+   for(vector<const reco::Candidate*>::const_iterator iObject  = theFilteredObjects.begin();
+                                                      iObject != theFilteredObjects.end();
+                                                    ++iObject)
+   {
+      const reco::Candidate* currentObject = *iObject;
+      result.push_back(currentObject->pt());
+   }
+}
+
+void
+GammaOccupancy::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   const vector<const reco::Candidate*>& theSignalObjects = input->signalObjectsSortedByPt();
+
+   for(vector<const reco::Candidate*>::const_iterator iObject  = theSignalObjects.begin();
+         iObject != theSignalObjects.end();
+         ++iObject)
+   {
+      const reco::Candidate* currentObject = *iObject;
+      if (!currentObject->charge())
+         result.push_back(input->getLeafDaughters(currentObject).size());
+   }
+}
+
+void
+GammaPt::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   const vector<const reco::Candidate*>& theSignalObjects = input->signalObjectsSortedByPt();
+
+   for(vector<const reco::Candidate*>::const_iterator iObject  = theSignalObjects.begin();
+         iObject != theSignalObjects.end();
+         ++iObject)
+   {
+      const reco::Candidate* currentObject = *iObject;
+      if (!currentObject->charge())
+      {
+         vector<const reco::Candidate*> daughters = input->getLeafDaughters(currentObject);
+         for(vector<const reco::Candidate*>::const_iterator iDaughter  = daughters.begin();
+                                                            iDaughter != daughters.end();
+                                                          ++iDaughter)
+         {
+            result.push_back((*iDaughter)->pt());
+         }
+      }
+   }
+}
+
 
 void
 TrackAngle::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
@@ -163,6 +229,15 @@ InvariantMassOfSignal::doComputation(PFTauDiscriminantManager* input, vector<dou
    result.push_back(input->getDecayMode()->mass());
 }
 
+// takes invariant mass of all objects in signal cone + Filtered objects
+void
+InvariantMassOfSignalWithFiltered::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   LorentzVector signalObjects = input->getDecayMode()->p4();
+   signalObjects += input->getDecayMode()->filteredObjects().p4();
+   result.push_back(signalObjects.M());
+}
+
 // returns vector of invariant masses of larger and larger subsets of all signal objects e.g. result[2] is
 // the invariant mass of the lead track with the next highest Pt object
 
@@ -200,6 +275,38 @@ OutlierPt::doComputation(PFTauDiscriminantManager* input, vector<double>& result
       if (currentObject)
          result.push_back(currentObject->pt());
    }
+}
+
+void
+OutlierSumPt::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   LorentzVector totalFourVector;
+   const vector<const reco::Candidate*>& theOutlierObjects = input->outlierObjectsSortedByPt();
+   for(vector<const reco::Candidate*>::const_iterator iObject  = theOutlierObjects.begin();
+         iObject != theOutlierObjects.end();
+         ++iObject)
+   {
+      const reco::Candidate* currentObject = *iObject;
+      if (currentObject)
+         totalFourVector += currentObject->p4();
+   }
+   result.push_back(totalFourVector.pt());
+}
+
+void
+OutlierMass::doComputation(PFTauDiscriminantManager* input, vector<double>& result)
+{
+   LorentzVector totalFourVector;
+   const vector<const reco::Candidate*>& theOutlierObjects = input->outlierObjectsSortedByPt();
+   for(vector<const reco::Candidate*>::const_iterator iObject  = theOutlierObjects.begin();
+         iObject != theOutlierObjects.end();
+         ++iObject)
+   {
+      const reco::Candidate* currentObject = *iObject;
+      if (currentObject)
+         totalFourVector += currentObject->p4();
+   }
+   result.push_back(totalFourVector.M());
 }
 
 void
@@ -280,8 +387,4 @@ NeutralOutlierAngle::doComputation(PFTauDiscriminantManager* input, vector<doubl
 
 
 }
-
-
-
-
 

@@ -48,6 +48,14 @@ class OutlierNCharged : public DiscriminantBase<int> {
       void doComputation(PFTauDiscriminantManager* input, vector<int>& result);
 };
 
+class OutlierN : public DiscriminantBase<int> {
+   public:
+      OutlierN():DiscriminantBase<int>("OutlierN", "I", true, false, -1){};
+      ~OutlierN(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<int>& result);
+};
+
 
 class Pt : public DiscriminantBase<double>  {
    public:
@@ -97,6 +105,34 @@ class PiZeroPt : public DiscriminantBase<double> {
       void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
 };
 
+// any objects in the PFTauDecayMode that were moved filtered
+class FilteredObjectPt : public DiscriminantBase<double> {
+   public:
+      FilteredObjectPt():DiscriminantBase<double>("FilteredObjectPt", "vector<double>", false, true, 0.0){};
+      ~FilteredObjectPt(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+//  Matches to PiZeroPt, each element gives the corresponding # of photons in each PiZero
+class GammaOccupancy : public DiscriminantBase<double> {
+   public:
+      GammaOccupancy():DiscriminantBase<double>("GammaOccupancy", "vector<double>", false, true, 0.0){}
+      ~GammaOccupancy(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+// In same order as PiZeroPt.  Can be matched to PiZeros using PiZeroPt and GammaOccupancy
+class GammaPt : public DiscriminantBase<double> {
+   public:
+      GammaPt():DiscriminantBase<double>("GammaPt", "vector<double>", false, true, 0.0){}
+      ~GammaPt(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+
 class TrackAngle : public DiscriminantBase<double> {
    public:
       TrackAngle():DiscriminantBase<double>("TrackAngle", "vector<double>", false, true, 0.0){};
@@ -130,9 +166,18 @@ class InvariantMassOfSignal : public DiscriminantBase<double> {
       void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
 };
 
+// takes invariant mass of all objects in signal cone + filtered objects
+class InvariantMassOfSignalWithFiltered : public DiscriminantBase<double> {
+   public:
+      InvariantMassOfSignalWithFiltered():DiscriminantBase<double>("InvariantMassOfSignalWithFiltered", "D", true, false, 0.0){};
+      ~InvariantMassOfSignalWithFiltered(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+
 // returns vector of invariant masses of larger and larger subsets of all signal objects e.g. result[2] is
 // the invariant mass of the lead track with the next highest Pt object
-
 class InvariantMass : public DiscriminantBase<double> {
    public:
       InvariantMass():DiscriminantBase<double>("InvariantMass", "vector<double>", false, true, 0.0){};
@@ -145,6 +190,22 @@ class OutlierPt : public DiscriminantBase<double> {
    public:
       OutlierPt():DiscriminantBase<double>("OutlierPt", "vector<double>", false, true, 0.0){};
       ~OutlierPt(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+class OutlierSumPt : public DiscriminantBase<double> {
+   public:
+      OutlierSumPt():DiscriminantBase<double>("OutlierSumPt", "D", true, false, 0.0){};
+      ~OutlierSumPt(){};
+   protected:
+      void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
+};
+
+class OutlierMass : public DiscriminantBase<double> {
+   public:
+      OutlierMass():DiscriminantBase<double>("OutlierMass", "D", true, false, 0.0){};
+      ~OutlierMass(){};
    protected:
       void doComputation(PFTauDiscriminantManager* input, vector<double>& result);
 };

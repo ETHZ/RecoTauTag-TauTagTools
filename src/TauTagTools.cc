@@ -17,12 +17,14 @@ TFormula computeConeSizeTFormula(const string& ConeSizeFormula,const char* error
   //    given as configuration parameter for matching and signal cone sizes;
   //
   //    The size of a cone may depend on the energy "E" and/or transverse energy "ET" of the tau-jet candidate.
+  //    Alternatively one can additionally use "JetOpeningDR", which specifies the opening angle of the seed jet.
   //    Any functional form that is supported by ROOT's TFormula class can be used (e.g. "3.0/E", "0.25/sqrt(ET)")
   //
   //    replace "E"  by TFormula variable "x"
   //            "ET"                      "y"
   TFormula ConeSizeTFormula;
   string ConeSizeFormulaStr = ConeSizeFormula;
+  replaceSubStr(ConeSizeFormulaStr,"JetOpeningDR", "z");
   replaceSubStr(ConeSizeFormulaStr,"ET","y");
   replaceSubStr(ConeSizeFormulaStr,"E","x");
   ConeSizeTFormula.SetName("ConeSize");
@@ -90,7 +92,7 @@ void replaceSubStr(string& s,const string& oldSubStr,const string& newSubStr){
 	  fabs((**iTk).dxy(pv.position()))<=tkmaxipt &&
 	  (**iTk).numberOfValidHits()>=tkminTrackerHitsn &&
 	  (**iTk).hitPattern().numberOfValidPixelHits()>=tkminPixelHitsn &&
-	  fabs((**iTk).dz()-refpoint_Z)<=tktorefpointmaxDZ)
+	  fabs((**iTk).dz(pv.position()))<=tktorefpointmaxDZ)
 	filteredTracks.push_back(*iTk);
     }
     return filteredTracks;
@@ -143,7 +145,7 @@ void replaceSubStr(string& s,const string& oldSubStr,const string& newSubStr){
 	    fabs((*PFChargedHadrCand_rectk).dxy(pv.position()))<=ChargedHadrCand_tkmaxipt &&
 	    (*PFChargedHadrCand_rectk).numberOfValidHits()>=ChargedHadrCand_tkminTrackerHitsn &&
 	    (*PFChargedHadrCand_rectk).hitPattern().numberOfValidPixelHits()>=ChargedHadrCand_tkminPixelHitsn &&
-	    fabs((*PFChargedHadrCand_rectk).dz()-refpoint_Z)<=ChargedHadrCand_tktorefpointmaxDZ)
+	    fabs((*PFChargedHadrCand_rectk).dz(pv.position()))<=ChargedHadrCand_tktorefpointmaxDZ)
 	  filteredPFChargedHadrCands.push_back(*iPFCand);
       }
     }

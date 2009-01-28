@@ -118,9 +118,23 @@ void PFTauDiscriminantManager::fillOutlierObjects(candPtrVector& toFill)
       edm::LogError("PFTauDiscriminantManager") << "Trying to get QCD objects from null PFTauDecayMode object!  Returning empty vector...";
       return;
    }
+
+   // add in filtered objects (created in PFRecoTauDecayModeDeterminator) i.e filtered 2-prongs
+   // note that this uses the underlying PFCandidates, to be consistent w/ the rest of the objects
+   PFCandidateRefVector theFilteredObjects = currentTauDecayMode_->filteredPFCandidates();
+   
+   for(PFCandidateRefVector::const_iterator iFilteredCand  = theFilteredObjects.begin();
+                                            iFilteredCand != theFilteredObjects.end();
+                                          ++iFilteredCand)
+   {
+      const PFCandidate* pfCand = iFilteredCand->get();
+      const Candidate* castedCand = static_cast<const Candidate*>(pfCand);
+      if (castedCand)
+         toFill.push_back(castedCand);
+   }
+
    // get associated PFTau from PFTauDecayMode
    const PFTau* originalTau = currentTauDecayMode_->pfTauRef().get();
-
    if(originalTau) //this may be null by design if there is no associated PFTau (e.g. if DecayMode is constructed from MC truth)
    {
       const PFCandidateRefVector& theOutliers = originalTau->isolationPFCands();
@@ -157,7 +171,7 @@ PFTauDiscriminantManager::mainTrack()
       }
 
       //if there are more than three tracks, only take the top three, by Pt
-      TauTagTools::sortByDescendingPt<reco::Candidate> ptSorter;
+      TauTagTools::sortByAscendingPt<reco::Candidate> ptSorter;
       sort(myChargedCandidates.begin(), myChargedCandidates.end(), ptSorter);
       size_t maxTracks = (nTracks > 3) ? 3 : nTracks;
       int    charge    = 0;
@@ -318,7 +332,28 @@ PFTauDiscriminantManager::buildMVAComputerLink(std::vector<PhysicsTools::Variabl
    }
 }
 
+vector<const reco::Candidate*>
+PFTauDiscriminantManager::getLeafDaughters(const reco::Candidate* input) 
+{
+   vector<const reco::Candidate*> output;
 
+   //check for validity
+   if(!input)   
+      return output;
+
+   size_t nDaughters = input->numberOfDaughters();
+   if(!nDaughters)      //this is a leaf
+      output.push_back(input);
+   else                 //recurse down this objects daughters
+   {
+      for(size_t iDaughter = 0; iDaughter < nDaughters; ++iDaughter)
+      {
+         vector<const reco::Candidate*> leafsOnThisBranch = getLeafDaughters(input->daughter(iDaughter));
+         output.insert(output.end(), leafsOnThisBranch.begin(), leafsOnThisBranch.end());
+      }
+   }
+   return output;
+}
 
 PFTauDiscriminantManager::~PFTauDiscriminantManager()
 {

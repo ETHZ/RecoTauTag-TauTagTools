@@ -39,7 +39,7 @@ process.PoolDBOutputService = cms.Service("PoolDBOutputService",
 	timetype = cms.untracked.string('runnumber'),
 	connect = cms.string('sqlite_file:Example.db'),  #or frontier, etc
 	toPut = cms.VPSet(cms.PSet(
-		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
+		record = cms.string('TauTagMVAComputerRcd'),
 		tag = cms.string('MyTestMVATag')                               
 	))
 )

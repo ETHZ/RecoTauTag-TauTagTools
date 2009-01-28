@@ -15,7 +15,6 @@ Description: Produces reco::PFTauDecayModes corresponding to MonteCarlo objects
 //
 // Original Author:  Evan K. Friis, UC Davis (friis@physics.ucdavis.edu)
 //         Created:  Thu Sep 1 06:19:05 PST 2008
-// $Id: TruthTauDecayModeProducer.cc,v 1.2 2008/10/15 03:18:05 friis Exp $
 //
 //
 

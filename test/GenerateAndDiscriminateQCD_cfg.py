@@ -48,7 +48,7 @@ process.TauMVAFromDB = cms.ESSource("PoolDBESSource",
 	CondDBSetup,
 	timetype = cms.untracked.string('runnumber'),
 	toGet = cms.VPSet(cms.PSet(
-		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
+		record = cms.string('TauTagMVAComputerRcd'),
 		tag = cms.string('MyTestMVATag')
 	)),
 	connect = cms.string('sqlite_file:Example.db'),
