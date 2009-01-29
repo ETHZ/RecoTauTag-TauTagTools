@@ -1,8 +1,9 @@
 '''
 BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
-
 Build signal ROOT files to support TauMVA training
+
+$Id$ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
