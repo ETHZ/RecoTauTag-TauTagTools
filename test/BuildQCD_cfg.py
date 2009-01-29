@@ -80,7 +80,7 @@ process.source = cms.Source("PythiaSource",
 )
 
 # Common inputs, with fake conditions
-process.load("FastSimulation.Configuration.CommonInputsFake_cff")
+process.load("FastSimulation.Configuration.CommonInputs_cff")
 # Famos sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
 # Parametrized magnetic field (new mapping, 4.0 and 3.8T)
@@ -108,7 +108,7 @@ process.main = cms.Sequence(process.genParticles*process.genParticlesForJets*pro
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
 #process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeteriminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
+process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")           # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
 process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
