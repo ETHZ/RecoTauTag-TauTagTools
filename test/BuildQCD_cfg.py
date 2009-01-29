@@ -119,6 +119,7 @@ process.tauMVATrainerBackground.outputRootFileName="%s/output_%i_%i_%i_%i.root" 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
                       process.PFTau*
+                      process.pfTauDecayModeHighEfficiency*
 #                      process.insideOutJets*
 #                      process.pfRecoTauTagInfoProducerInsideOut*
 #                      process.pfRecoTauProducerInsideOut*
