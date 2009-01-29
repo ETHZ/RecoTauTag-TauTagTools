@@ -66,7 +66,10 @@ process.load("RecoTauTag/TauTagTools/ZtoTauHadronic_cfi")
 #process.load("RecoTauTag/TauTagTools/DiTaus_cfi")
 
 # Common inputs, with fake conditions
-process.load("FastSimulation.Configuration.CommonInputs_cff")
+process.load("FastSimulation.Configuration.CommonInputsFake_cff")
+# Common inputs
+#process.load("FastSimulation.Configuration.CommonInputs_cff")
+
 # Famos sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
 # Parametrized magnetic field (new mapping, 4.0 and 3.8T)
@@ -105,7 +108,6 @@ process.tauMVATrainerSignal.outputRootFileName="%s/output_%i_%i.root" % (rootFil
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
                       process.PFTau*
-                      process.pfTauDecayModeHighEfficiency*
 #                      process.insideOutJets*
 #                      process.pfRecoTauTagInfoProducerInsideOut*
 #                      process.pfRecoTauProducerInsideOut*
