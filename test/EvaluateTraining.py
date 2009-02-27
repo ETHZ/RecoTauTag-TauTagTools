@@ -119,15 +119,17 @@ for name in myTauAlgorithms:
             break
          nb = SignalChain.GetEntry(entry)
          if nb <= 0:
-            continue
-         #Try and get the computer for this decay mode.  If it doesn't exist,
-         #then we mark it automatically as fail (it is either NULL, or it is some non-usable decay mode, like 50 charged tracks)
-         try:
-            mvaComputer = DecayModeMap[SignalChain.DecayMode]
-            SignalReader.update()
-            mvaout[0] = SignalReader.fill(mvaComputer)
-         except KeyError:
-            mvaout[0] = -2.0
+            print "Root read error!"
+            mvaout[0] = -2.5
+         else:
+            #Try and get the computer for this decay mode.  If it doesn't exist,
+            #then we mark it automatically as fail (it is either NULL, or it is some non-usable decay mode, like 50 charged tracks)
+            try:
+               mvaComputer = DecayModeMap[SignalChain.DecayMode]
+               SignalReader.update()
+               mvaout[0] = SignalReader.fill(mvaComputer)
+            except KeyError:
+               mvaout[0] = -2.0
          SignalOutput.Fill()
       #Close the stuff we are done with
       SignalChain.AddFriend(SignalOutput)
@@ -152,15 +154,17 @@ for name in myTauAlgorithms:
             break
          nb = BackgroundChain.GetEntry(entry)
          if nb <= 0:
-            continue
-         #Try and get the computer for this decay mode.  If it doesn't exist,
-         #then we mark it automatically as fail
-         try:
-            mvaComputer = DecayModeMap[BackgroundChain.DecayMode]
-            BackgroundReader.update()
-            mvaout[0] = BackgroundReader.fill(mvaComputer)
-         except KeyError:
-            mvaout[0] = -1.0
+            print "Root read error!"
+            mvaout[0] = 2.5
+         else:
+            #Try and get the computer for this decay mode.  If it doesn't exist,
+            #then we mark it automatically as fail
+            try:
+               mvaComputer = DecayModeMap[BackgroundChain.DecayMode]
+               BackgroundReader.update()
+               mvaout[0] = BackgroundReader.fill(mvaComputer)
+            except KeyError:
+               mvaout[0] = 2.0
          BackgroundOutput.Fill()
       #Close the stuff we are done with
       BackgroundChain.AddFriend(BackgroundOutput)
