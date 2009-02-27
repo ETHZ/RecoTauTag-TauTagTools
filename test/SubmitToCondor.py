@@ -8,8 +8,8 @@ nEventsPerJob = 500
 totalJobs     = 100
 switchEvery   = 10
 '''
-nEventsPerJob = 1000
-totalJobs     = 60
+nEventsPerJob = 10000
+totalJobs     = 100 
 switchEvery   = 5
 
 signalBlock =  ( "SubmitSignal.jdl" , nEventsPerJob , 0  , 0  ) 
@@ -18,7 +18,7 @@ lowQCD      =  ( "SubmitBkg.jdl"    , nEventsPerJob , 20 , 30 )
 midQCD      =  ( "SubmitBkg.jdl"    , nEventsPerJob , 30 , 50 ) 
 highQCD     =  ( "SubmitBkg.jdl"    , nEventsPerJob , 50 , 80 ) 
 
-submitters = [signalBlock, lowQCD, midQCD, highQCD]
+submitters = [signalBlock, vlowQCD, lowQCD, midQCD, highQCD]
 #submitters = [ lowQCD, midQCD, highQCD]
 #submitters = [signalBlock,  midQCD]
 

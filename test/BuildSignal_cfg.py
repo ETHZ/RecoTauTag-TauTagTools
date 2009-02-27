@@ -1,8 +1,9 @@
 '''
 BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
+Build signal ROOT files to support Tau neural classifier training
 
-Build signal ROOT files to support TauMVA training
+$Id: BuildSignal_cfg.py,v 1.3.2.2 2009/01/29 21:38:49 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
@@ -16,7 +17,7 @@ Sequence:
 '''
 import FWCore.ParameterSet.Config as cms
 
-process = cms.Process("TauMVA")
+process = cms.Process("TaNC")
 
 batchNumber=1
 jobNumber=1
@@ -79,7 +80,7 @@ process.VolumeBasedMagneticFieldESProducer.useParametrizedTrackerField = True
 
 process.famosPileUp.PileUpSimulator.averageNumber = 0.0    
 # You may not want to simulate everything for your study
-#process.famosSimHits.SimulateCalorimetry = True
+process.famosSimHits.SimulateCalorimetry = True
 process.famosSimHits.SimulateTracking = True
 
 #material effects
@@ -88,7 +89,7 @@ process.famosSimHits.SimulateTracking = True
 #process.famosSimHits.EnergyLoss         = cms.bool(False)
 #process.famosSimHits.NuclearInteraction = cms.bool(False)
 
-process.Timing = cms.Service("Timing")
+#process.Timing = cms.Service("Timing")
 
 # Simulation sequence
 process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
@@ -97,7 +98,7 @@ process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
 #process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")                    # Uncomment to use InsideOut jets
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")           # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
+process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
 process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
@@ -118,7 +119,7 @@ process.p1 = cms.Path(process.main*
 
 process.MessageLogger = cms.Service("MessageLogger",
     info_RPL_BATCH_RPL_RUN = cms.untracked.PSet(
-        threshold = cms.untracked.string('WARNING'),
+        threshold = cms.untracked.string('ERROR'),
     ),
     destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN')
 )
