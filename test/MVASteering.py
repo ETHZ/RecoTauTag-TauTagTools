@@ -22,26 +22,24 @@ from RecoTauTag.TauTagTools.TauMVAConfigurations_cfi import *
                 - which algorithms (pfTauHighEfficiency, etc)
         Define locations of train/test ROOT files
 """
-
-MVACollections = {}
-
-#################################################################
 #######  USER PARAMETERS  #######################################
 #################################################################
 
 # Define lists of neural nets corresponding to a total configuration
 # The Neural net objects used here (SingleNet, OneProngNoPiZero, etc) must be defined in
-# the TauMVAConfigurations_cfi.py found in this directory
+# the TauMVAConfigurations_cfi.py found in ../python
+MVACollections = {}
+
+
+# Use the Tau neural classifier configuration
+MVACollections['TaNC'] = [OneProngNoPiZero,
+                          OneProngOnePiZero,
+                          OneProngTwoPiZero,
+                          ThreeProngNoPiZero,
+                          ThreeProngOnePiZero]
 
 # non isolated, single net only
-MVACollections['SingleNet'] = [SingleNet]       
-
-# non isolated, neural net for each decay mode
-MVACollections['MultiNet'] = [OneProngNoPiZero,
-                              OneProngOnePiZero,
-                              OneProngTwoPiZero,
-                              ThreeProngNoPiZero,
-                              ThreeProngOnePiZero]
+# MVACollections['SingleNet'] = [SingleNet]       
 
 # isolation applied, neural net for each decay mode
 MVACollections['MultiNetIso'] = [OneProngNoPiZeroIso,
@@ -51,13 +49,15 @@ MVACollections['MultiNetIso'] = [OneProngNoPiZeroIso,
                                  ThreeProngOnePiZeroIso]
 
 # isolation applied, single neural net 
-MVACollections['SingleNetIso'] = [SingleNetIso]
+#MVACollections['SingleNetIso'] = [SingleNetIso]
+
 
 # For training/evaluating on an isolated sample, define the isolated criteria here
 IsolationCutForTraining = "Alt$(ChargedOutlierPt[0], 0) < 1.0 && Alt$(NeutralOutlierPt[0], 0) < 1.5" #no tracks above 1 GeV, no gammas above 1.5  GeV
 
 #Define the PFRecoTauDecayMode source to use (in the case of more than one separate directories will be created for each training sample)
 myTauAlgorithms = ["pfTauDecayModeHighEfficiency"]
+
 """
 Example of multiple algorithms
 myTauAlgorithms = ["pfTauDecayModeHighEfficiency",
@@ -70,9 +70,10 @@ SignalRootDir               = os.path.join(TauTagToolsWorkingDirectory, "test", 
 BackgroundRootDir           = os.path.join(TauTagToolsWorkingDirectory, "test", "finishedJobsBackground")
 
 #Globs to get files for training and evaluation.  If you want to ensure different sets, you can do something like
-# add a requirement such as *[!4].root for training and *[4].root.  (files not ending in four used for trianing, ending in four used for testing)
-SignalFileTrainingGlob     = "%s/*[!4].root" % SignalRootDir
-BackgroundFileTrainingGlob = "%s/*[!4].root" % BackgroundRootDir
+# add a requirement such as *[0123].root for training and *[4].root.  (files not ending in four used for trianing, ending in four used for testing)
+SignalFileTrainingGlob     = "%s/*[0123].root" % SignalRootDir
+#BackgroundFileTrainingGlob = "%s/*82953*0.root" % BackgroundRootDir
+BackgroundFileTrainingGlob = "%s/*[0123].root" % BackgroundRootDir
 
 SignalFileTestingGlob     = "%s/*4.root" % SignalRootDir
 BackgroundFileTestingGlob = "%s/*4.root" % BackgroundRootDir
@@ -94,8 +95,6 @@ for name, mvaCollection in MVACollections.iteritems():
 myModules = []
 for name, mva in listOfMVANames.iteritems():
    myModules.append(mva)
-
-
 
 # Catch dumb errors before we begin
 
