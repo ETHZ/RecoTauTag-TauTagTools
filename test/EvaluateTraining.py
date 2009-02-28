@@ -34,11 +34,10 @@ PhysicsTools = PyCintex.Namespace("PhysicsTools")
 for anAlgo in myTauAlgorithms:
    for aModule in myModules:
       computerName = aModule.computerName.value()
-      mvaFile = os.path.join(TauTagToolsWorkingDirectory, "test", "TrainDir_%s_%s" % (computerName, anAlgo), "%s.mva" % computerName)
+      mvaFile = GetTrainingFile(computerName, anAlgo)
       if not os.path.exists(mvaFile):
          print "Expected %s to exits, but it doesn't! Have you completed the training?" % mvaFile
          raise MVAError
-
 
 #Now, get the different trees into this file
 # we need, for signal and background
@@ -80,7 +79,7 @@ for anAlgo in myTauAlgorithms:  #for each algo
       DecayModeMap = {}
       for aModule in mvaCollection:    #different decayMode <--> MVA implentation maps
          computerName = aModule.computerName.value()
-         theTrainedMVA = PhysicsTools.MVAComputer(os.path.join(TauTagToolsWorkingDirectory, "test", "TrainDir_%s_%s" % (computerName, anAlgo), "%s.mva" % computerName))
+         theTrainedMVA = PhysicsTools.MVAComputer(GetTrainingFile(computerName, anAlgo))
          for aDecayMode in aModule.decayModeIndices.value():
             print "Linking decay mode %i to MVA: %s for algorithm %s, MVA collection: %s" % (aDecayMode, computerName, anAlgo, mvaCollectionName)
             DecayModeMap[aDecayMode] = theTrainedMVA
