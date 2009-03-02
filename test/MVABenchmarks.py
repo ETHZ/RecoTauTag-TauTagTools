@@ -55,12 +55,17 @@ if not os.path.exists("Plots"):
 #Get Truth info
 SignalTruthTree     = dataFile.Get("truth_Signal")
 BackgroundTruthTree = dataFile.Get("truth_Background")
+SignalTruthTree.SetCacheSize(0)
+BackgroundTruthTree.SetCacheSize(0)
 
 colorCounter = 2
 
 for algo in algosToPlot:
    SignalRecoTree     = dataFile.Get("%s_Signal" % algo)
    BackgroundRecoTree = dataFile.Get("%s_Background" % algo)
+   SignalRecoTree.SetCacheSize(0)
+   BackgroundRecoTree.SetCacheSize(0)
+
    #Get access to the corresponding truth data
    SignalRecoTree.AddFriend(SignalTruthTree)
    BackgroundRecoTree.AddFriend(BackgroundTruthTree)

@@ -64,8 +64,10 @@ for name, chain in BackgroundChains.iteritems():
 #Fix the chain names
 for name,chain in SignalChains.iteritems():
    chain.SetName("%s_Signal" % name)
+   chain.SetCacheSize(0)
 for name,chain in BackgroundChains.iteritems():
    chain.SetName("%s_Background" % name)
+   chain.SetCacheSize(0)
 
 #Always speak the truth
 SignalChains['truth'].Write()
