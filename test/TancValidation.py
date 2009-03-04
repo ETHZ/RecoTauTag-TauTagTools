@@ -42,7 +42,7 @@ process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauMVAFromDB")
 #Do Decay Mode reconstruction, just in case.  Eventually this will be a standard RECO thing
 # and it won't need to be re-run 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeteriminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
+process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")           # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 
 process.ReRunTauID = cms.Sequence(process.PFTauHighEfficiency*process.pfTauDecayModeHighEfficiency)
 
