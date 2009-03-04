@@ -3,7 +3,7 @@ BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 Build signal ROOT files to support Tau neural classifier training
 
-$Id: BuildSignal_cfg.py,v 1.3.2.2 2009/01/29 21:38:49 friis Exp $ 
+$Id: BuildSignal_cfg.py,v 1.8 2009/02/27 22:46:59 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
@@ -67,9 +67,9 @@ process.load("RecoTauTag/TauTagTools/ZtoTauHadronic_cfi")
 #process.load("RecoTauTag/TauTagTools/DiTaus_cfi")
 
 # Common inputs, with fake conditions
-process.load("FastSimulation.Configuration.CommonInputsFake_cff")
+# process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 # Common inputs
-#process.load("FastSimulation.Configuration.CommonInputs_cff")
+process.load("FastSimulation.Configuration.CommonInputs_cff")
 
 # Famos sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
@@ -119,6 +119,7 @@ process.p1 = cms.Path(process.main*
 
 process.MessageLogger = cms.Service("MessageLogger",
     info_RPL_BATCH_RPL_RUN = cms.untracked.PSet(
+#        threshold = cms.untracked.string('ERROR'),
         threshold = cms.untracked.string('ERROR'),
     ),
     destinations = cms.untracked.vstring('info_RPL_BATCH_RPL_RUN')

@@ -15,6 +15,18 @@ if len(MVASteering.myTauAlgorithms) > 1:
          Please modify it so that it only includeds the algorithm on which the TaNC is to be used."
 
 algorithm = MVASteering.myTauAlgorithms[0]
+myconnect   = cms.string('sqlite_file:Example.db')  #or frontier, etc
+mytag       = cms.string('MyTestMVATag')
+mytimetype  = cms.untracked.string('runnumber')
+print ""
+print "***************************************************"
+print "******  Upload Tau Neural Classifier to DB   ******"
+print "***************************************************"
+print "*  Using the %s algorithm                         " % algorithm
+print "*  DB tag:       %s                               " % mytag.value()
+print "*  Database:     %s                               " % myconnect.value()
+print "*  Timetype:     %s                               " % mytimetype.value()
+print "* ----------------------------------------------- "
 
 # Unpack the TaNC neural nets into a parameter set
 tempPSet   = cms.PSet()
@@ -30,6 +42,7 @@ for aNeuralNet in RecoTauTag.TauTagTools.TauMVAConfigurations_cfi.TaNC.value():
    # god bless you, python
    tempPSet.__setattr__(aNeuralNet.computerName.value(), cms.string(mvaFileLocation))
    toCopyList.append(neuralNetName)
+   print "* %-20s %-20s      " % (neuralNetName, mvaFileLocation )
 
 process = cms.Process("TaNCCondUpload")
 
@@ -50,12 +63,12 @@ process.MVAComputerSave = cms.EDAnalyzer("TauMVATrainerSave",
 
 process.PoolDBOutputService = cms.Service("PoolDBOutputService",
 	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService'),
-	DBParameters = cms.PSet( messageLevel = cms.untracked.int32(0) ),
-	timetype = cms.untracked.string('runnumber'),
-	connect = cms.string('sqlite_file:Example.db'),  #or frontier, etc
+	DBParameters = cms.PSet( messageLevel = cms.untracked.int32(4) ),
+	timetype = mytimetype,
+	connect = myconnect,
 	toPut = cms.VPSet(cms.PSet(
 		record = cms.string('TauTagMVAComputerRcd'),
-		tag = cms.string('MyTestMVATag')                               
+		tag = mytag
 	))
 )
 

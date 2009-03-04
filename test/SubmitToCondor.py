@@ -8,7 +8,7 @@ nEventsPerJob = 500
 totalJobs     = 100
 switchEvery   = 10
 '''
-nEventsPerJob = 10000
+nEventsPerJob = 5000
 totalJobs     = 100 
 switchEvery   = 5
 

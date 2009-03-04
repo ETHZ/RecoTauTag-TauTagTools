@@ -57,6 +57,8 @@ SignalTruthTree     = dataFile.Get("truth_Signal")
 BackgroundTruthTree = dataFile.Get("truth_Background")
 SignalTruthTree.SetCacheSize(0)
 BackgroundTruthTree.SetCacheSize(0)
+SignalTruthTreeEntries = SignalTruthTree.GetEntries()
+BackgroundTruthTreeEntries = BackgroundTruthTree.GetEntries()
 
 colorCounter = 2
 
@@ -69,6 +71,12 @@ for algo in algosToPlot:
    #Get access to the corresponding truth data
    SignalRecoTree.AddFriend(SignalTruthTree)
    BackgroundRecoTree.AddFriend(BackgroundTruthTree)
+
+   SignalRecoTree.AddFriend(SignalTruthTree)
+   BackgroundRecoTree.AddFriend(BackgroundTruthTree)
+
+   SignalRecoTreeEntries     = SignalRecoTree.GetEntries()
+   BackgroundRecoTreeEntries = BackgroundRecoTree.GetEntries()
 
    #Build basic entry lists (things in the kinematic window)
    SignalRecoTree.Draw(">>KinematicWindowSignal", KinematicCut % { 'treeName' : "truth_Signal" }, "entrylist")
@@ -93,6 +101,20 @@ for algo in algosToPlot:
       BackgroundMVATree     = gDirectory.Get(BackgroundMVATreeName)
       SignalRecoTree.AddFriend(SignalMVATree)
       BackgroundRecoTree.AddFriend(BackgroundMVATree)
+
+      SignalMVATreeEntries     = SignalMVATree.GetEntries()
+      BackgroundMVATreeEntries = BackgroundMVATree.GetEntries()
+
+      print "Checking to make sure Trees are the right size.."
+      print "%-20s %15s %15s 15s" % ("", "Truth entries", "RECO entries", "MVA entries")
+      checker = lambda x, y, z : x == y and (y == z and (True, "OK") or (False, "FAIL!")) or (False, "FAIL!")
+      SignalCheckIt = checker(SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries)
+      BackgroundCheckIt = checker(BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries)
+      print "%-20s %15i %15s %15s %5s" % ("Signal", SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries, SignalCheckIt[1])
+      print "%-20s %15i %15s %15s %5s" % ("Background", BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries, BackgroundCheckIt[1])
+      if not SignalCheckIt[0] or not BackgroundCheckIt[0]:
+         raise IOError:  ", either signal or background Truth/Reco/MVA trees are out of sync!"
+
       """
       Get the MVA distributions for the appropriate decay modes
       The goal is to find an operating point (multi dimensional for multinet)
@@ -361,7 +383,7 @@ for algo in algosToPlot:
       Envelope.SetLineColor(colorCounter)
       colorCounter += 1
       SummaryGraphs.append(Envelope)
-      SummaryLegend.AddEntry(Envelope,"%s-%s" % (algoNiceName, mvaName), "l")
+      SummaryLegend.AddEntry(Envelope,"%s" % (algoNiceName, mvaName), "l")
 
       #Build the axis titles, etc, if it doesn't a
       if SummaryBackground == 0:

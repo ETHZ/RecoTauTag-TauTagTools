@@ -80,9 +80,9 @@ process.source = cms.Source("PythiaSource",
 )
 
 # Common inputs, with fake conditions
-process.load("FastSimulation.Configuration.CommonInputsFake_cff")
+#process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 # Common inputs
-#process.load("FastSimulation.Configuration.CommonInputs_cff")
+process.load("FastSimulation.Configuration.CommonInputs_cff")
 # Famos sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
 # Parametrized magnetic field (new mapping, 4.0 and 3.8T)
