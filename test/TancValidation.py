@@ -1,5 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
+import copy
+
 process = cms.Process("TEST")
 
 process.source = cms.Source("PoolSource",
@@ -14,6 +16,15 @@ process.source = cms.Source("PoolSource",
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
 )
+
+process.load("Configuration.StandardSequences.GeometryPilot2_cff")
+process.load("Configuration.StandardSequences.MagneticField_cff")
+
+# Conditions: fake or frontier
+#process.load("Configuration.StandardSequences.FakeConditions_cff")
+process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+#process.GlobalTag.globaltag = 'IDEAL_V9::All'
+
 
 '''
 ****************************************************
@@ -50,13 +61,14 @@ process.ReRunTauID = cms.Sequence(process.PFTauHighEfficiency*process.pfTauDecay
 #       Load the TancDiscriminator 
 # #######################################################
 
-process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi.py")
+process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi")
 
 '''
 ****************************************************
 *****        Load validation code          *********
 ****************************************************
 '''
+process.DQMStore = cms.Service("DQMStore")
 process.load("Validation.RecoTau.TauTagValidationProducer_cff")
 process.load("Validation.RecoTau.TauTagValidation_cfi")
 process.load("Validation.RecoTau.RelValHistogramEff_cfi")
@@ -67,10 +79,10 @@ process.PFTausHighEfficiencyLeadingPionBothProngs.discriminators.append(TancDisc
 process.PFTausHighEfficiencyBothProngs.discriminators.append(TancDiscriminator)
 
 TauDiscriminatorPlotter             = copy.deepcopy(process.TauEfficiencies.plots.PFTauHighEfficiencyIDTrackIsolationEfficienies)
-TauDiscriminatorPlotter.numerator   = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/pfRecoTauDiscriminationByMVAHighEfficiency_vs_#PAR#TauVisible'),
-TauDiscriminatorPlotter.denominator = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_ReferenceCollection/nRef_Taus_vs_#PAR#TauVisible'),
-TauDiscriminatorPlotter.efficiency  = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/TrackIsolationEff#PAR#'),
-process.TauEfficiencies.plots.append(TauDiscriminatorPlotter)
+TauDiscriminatorPlotter.numerator   = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/pfRecoTauDiscriminationByMVAHighEfficiency_vs_#PAR#TauVisible')
+TauDiscriminatorPlotter.denominator = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_ReferenceCollection/nRef_Taus_vs_#PAR#TauVisible')
+TauDiscriminatorPlotter.efficiency  = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/TaNCEff#PAR#')
+process.TauEfficiencies.plots.TauDiscriminatorPlotter = TauDiscriminatorPlotter
 
 process.saveTauEff = cms.EDAnalyzer("DQMSimpleFileSaver",
   outputFileName = cms.string('CMSSW_3_1_0_pre1_tauGenJets.root')
