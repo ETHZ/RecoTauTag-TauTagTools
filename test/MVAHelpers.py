@@ -25,8 +25,19 @@ class TancSet:
       else:
          self.EstimatedEfficiency = (TancDecayMode.TotalSignalPrepass + sum([ x.SignalPassing(y) for x, y in zip(self.DecayModeList, cuts)]))*1.0/TancDecayMode.TotalSignalEntries
          self.EstimatedFakeRate   = (TancDecayMode.TotalBackgroundPrepass + sum([ x.BackgroundPassing(y) for x, y in zip(self.DecayModeList, cuts)]))*1.0/TancDecayMode.TotalBackgroundEntries
+   def VeelkenTransform(self, theDM, cut):
+      RescaledCut        = theDM.RescaleCut(cut)
+      SignalFraction     = theDM.GetSignalFraction()
+      BackgroundFraction = theDM.GetBackgroundFraction()
+      if SignalFraction <= 0:
+         return 0.0
+      if BackgroundFraction <= 0:
+         return 1.0
+      if RescaledCut <= 0.0:
+         return 0.0
+      return SignalFraction / (SignalFraction + ( (1/RescaledCut) - 1 )*BackgroundFraction)
    def GetVeelkenNormalization(self):
-      outputList = [ dm.GetSignalFraction() / ( dm.GetSignalFraction() + ( 1/(dm.RescaleCut(daCut)) - 1)*dm.GetBackgroundFraction() ) for dm, daCut in zip(self.DecayModeList, self.TancCuts) ]
+      outputList = [ self.VeelkenTransform(dm, daCut) for dm, daCut in zip(self.DecayModeList, self.TancCuts) ]
       return outputList
    def GetRescaledCuts(self):
       return [ dm.RescaleCut(theCut) for dm, theCut in zip(self.DecayModeList, self.TancCuts) ]
@@ -74,7 +85,13 @@ class TancDecayMode:
       return BuildCutString(self.DecayModes)
    def RescaleCut(self, cut):
       """ Get the cut, rescaled to between 0 and 1 """
-      TrueMin, TrueMax = self.MinMaxTuple
+      # Scale between -1 and 1.  Some outliers exist, due to to the linear outputnode of TMVA
+      # window the cuts in -1 and 1
+      TrueMin, TrueMax = (-1, 1)
+      if cut < -1:
+         cut = -1
+      if cut > 1:
+         cut = 1
       cut -= TrueMin  #scale lower end to zero
       cut /= (TrueMax - TrueMin)
       return cut
