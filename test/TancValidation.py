@@ -76,32 +76,30 @@ process.load("Validation.RecoTau.RelValHistogramEff_cfi")
 # Add our discriminator
 TancDiscriminator = cms.PSet( discriminator = cms.string("pfRecoTauDiscriminationByMVAHighEfficiency"), selectionCut = cms.double(0.5) )
 
-TancValidation = copy.deepcopy(process.PFTausHighEfficiencyLeadingPionBothProngs)
-TancValidation.ExtensionName = 'Tanc'
+process.TancValidation = copy.deepcopy(process.PFTausHighEfficiencyLeadingPionBothProngs)
+process.TancValidation.ExtensionName = 'Tanc'
 #get rid of normal isolation
-if TancValidation.discriminators[1].discriminator == 'pfRecoTauDiscriminationByTrackIsolationUsingLeadingPionHighEfficiency':
-   del TancValidation.discriminators[1] #track iso
+print "killing ",process.TancValidation.discriminators[1].discriminator.value() 
+if process.TancValidation.discriminators[1].discriminator.value() == 'pfRecoTauDiscriminationByTrackIsolationUsingLeadingPionHighEfficiency':
+   del process.TancValidation.discriminators[1] #track iso
 else:
-   raise RuntimeError, " trying to replace isolation discriminators with TaNC, name has changed!"
-if TancValidation.discriminators[1].discriminator == 'pfRecoTauDiscriminationByECALIsolationUsingLeadingPionHighEfficiency':
-   del TancValidation.discriminators[1] #ecal iso
+   raise RuntimeError, " trying to replace track isolation discriminators with TaNC, name has changed!"
+
+print "killing ",process.TancValidation.discriminators[1].discriminator.value() 
+if process.TancValidation.discriminators[1].discriminator.value() == 'pfRecoTauDiscriminationByECALIsolationUsingLeadingPionHighEfficiency':
+   del process.TancValidation.discriminators[1] #ecal iso
 else:
-   raise RuntimeError, " trying to replace isolation discriminators with TaNC, name has changed!"
+   raise RuntimeError, " trying to replace ecal isolation discriminators with TaNC, name has changed!"
 
 # insert the Tanc before the e/mu discriminants
-TancValidation.discriminators.insert(1, TancValidation)
+process.TancValidation.discriminators.insert(1, TancDiscriminator)
 
-TauDiscriminatorPlotter             = copy.deepcopy(process.TauEfficiencies.plots.PFTauHighEfficiencyIDTrackIsolationEfficienies)
-TauDiscriminatorPlotter.numerator   = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/pfRecoTauDiscriminationByMVAHighEfficiency_vs_#PAR#TauVisible')
-TauDiscriminatorPlotter.denominator = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_ReferenceCollection/nRef_Taus_vs_#PAR#TauVisible')
-TauDiscriminatorPlotter.efficiency  = cms.string('RecoTauV/pfRecoTauProducerHighEfficiency_pfRecoTauDiscriminationByMVAHighEfficiency/TaNCEff#PAR#')
-process.TauEfficiencies.plots.TauDiscriminatorPlotter = TauDiscriminatorPlotter
 
 process.saveTauEff = cms.EDAnalyzer("DQMSimpleFileSaver",
   outputFileName = cms.string('CMSSW_3_1_0_pre1_tauGenJets.root')
 )
 
-EvansTauEfficiences = cms.EDAnalyzer("DQMHistEffProducer",
+process.EvansTauEfficiences = cms.EDAnalyzer("DQMHistEffProducer",
     plots = cms.PSet(
 # REGULAR PFTAU EFFICIENCIES CALCULATION
       PFTauIDMatchingEfficiencies = cms.PSet(
@@ -259,10 +257,15 @@ EvansTauEfficiences = cms.EDAnalyzer("DQMHistEffProducer",
         parameter = cms.vstring('pt', 'eta', 'phi', 'energy')
       ),      
       )
+      )
+
+
+
 
 process.RunValidation = cms.Sequence(
     process.tauGenJetProducer +
     process.tauTagValidation +
+    process.TancValidation + 
     process.EvansTauEfficiences +
     process.saveTauEff)
 
