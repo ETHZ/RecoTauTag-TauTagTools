@@ -88,8 +88,8 @@ for anAlgo in myTauAlgorithms:  #for each algo
       MVAImplementations[anAlgo, mvaCollectionName] = DecayModeMap
 
 #Build the reader class (from the MVA framework) for the signal and background chains
-SignalReaders = dict([ (name, PhysicsTools.TreeReader(chain)) for name, chain in SignalChains.iteritems() ])
-BackgroundReaders = dict([ (name, PhysicsTools.TreeReader(chain)) for name, chain in BackgroundChains.iteritems() ])
+SignalReaders = dict([ (name, PhysicsTools.TreeReader(chain, True, True)) for name, chain in SignalChains.iteritems() ])
+BackgroundReaders = dict([ (name, PhysicsTools.TreeReader(chain, True, True)) for name, chain in BackgroundChains.iteritems() ])
 
 # Variable for TTree branch w/ MVA output 
 mvaout = array( 'f', [0.] )
