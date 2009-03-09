@@ -66,7 +66,7 @@ process.TauMVAFromDB = cms.ESSource("PoolDBESSource",
 		record = cms.string('TauTagMVAComputerRcd'),
 		tag = cms.string('MyTestMVATag')
 	)),
-	connect = cms.string('sqlite_file:Example.db'),
+	connect = cms.string('sqlite_file:/afs/cern.ch/user/f/friis/scratch0/Example.db'),
 	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService')
 )
 # necessary to prevent conflict w/ Fake BTau conditions
