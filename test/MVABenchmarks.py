@@ -2,9 +2,9 @@ from ROOT import TLegend, TPaveText, TLine, gSystem, gDirectory, gROOT, TCanvas,
 
 import os
 
-from MVASteering import *
-import MVASteering
-from MVAHelpers  import *
+from MVASteering   import *
+from MVAHelpers    import *
+from TaNCCutFinder import *
 
 """
         MVABenchmarks.py
@@ -16,23 +16,23 @@ from MVAHelpers  import *
 
 #Plot multiple different algorithms, if desired.
 algosToPlot = ["pfTauDecayModeHighEfficiency"]
-mvasToPlot  = ["SingleNetIso", "SingleNet", "MultiNet", "MultiNetIso"]
+#A list of the MVAs to compare
+mvasToPlot  = ["TaNC", "MultiNetIso", ]
 
 # For each combination of algosToPlot & mvasToPlot the relevant TrainDir_* must exist
-# and the training must have been completed
+# and the training must have been completed.  These directories can be prepared with the
+# PrepareForTraining.py script
 
 # Define cuts on the signal objects
 KinematicCut = "%(treeName)s.Pt > 20 && %(treeName)s.Pt < 50"  #%s refers to tree name substituton
 
 # Define fake rate benchmark points
 BenchmarkPoints = [ 0.01, 0.005, 0.0025, 0.001 ]
-FakeRatePlotLowerBound = 0.0005  # hopefully this number shrinks!
+FakeRatePlotLowerBound = 0.0003  # hopefully this number shrinks!
 
 # Cut label on the plots
 CutLabel = TPaveText(0.2, 0.7, 0.4, 0.8, "brNDC")
 CutLabel.AddText("20 GeV/c < True p_{T} < 50 GeV/c")
-
-
 CutLabel.SetFillStyle(0)
 CutLabel.SetBorderSize(0)
 
@@ -55,15 +55,28 @@ if not os.path.exists("Plots"):
 #Get Truth info
 SignalTruthTree     = dataFile.Get("truth_Signal")
 BackgroundTruthTree = dataFile.Get("truth_Background")
+SignalTruthTree.SetCacheSize(0)
+BackgroundTruthTree.SetCacheSize(0)
+SignalTruthTreeEntries = SignalTruthTree.GetEntries()
+BackgroundTruthTreeEntries = BackgroundTruthTree.GetEntries()
 
 colorCounter = 2
 
 for algo in algosToPlot:
    SignalRecoTree     = dataFile.Get("%s_Signal" % algo)
    BackgroundRecoTree = dataFile.Get("%s_Background" % algo)
+   SignalRecoTree.SetCacheSize(0)
+   BackgroundRecoTree.SetCacheSize(0)
+
    #Get access to the corresponding truth data
    SignalRecoTree.AddFriend(SignalTruthTree)
    BackgroundRecoTree.AddFriend(BackgroundTruthTree)
+
+   SignalRecoTree.AddFriend(SignalTruthTree)
+   BackgroundRecoTree.AddFriend(BackgroundTruthTree)
+
+   SignalRecoTreeEntries     = SignalRecoTree.GetEntries()
+   BackgroundRecoTreeEntries = BackgroundRecoTree.GetEntries()
 
    #Build basic entry lists (things in the kinematic window)
    SignalRecoTree.Draw(">>KinematicWindowSignal", KinematicCut % { 'treeName' : "truth_Signal" }, "entrylist")
@@ -88,6 +101,20 @@ for algo in algosToPlot:
       BackgroundMVATree     = gDirectory.Get(BackgroundMVATreeName)
       SignalRecoTree.AddFriend(SignalMVATree)
       BackgroundRecoTree.AddFriend(BackgroundMVATree)
+
+      SignalMVATreeEntries     = SignalMVATree.GetEntries()
+      BackgroundMVATreeEntries = BackgroundMVATree.GetEntries()
+
+      print "Checking to make sure Trees are the right size.."
+      print "%-20s %15s %15s 15s" % ("", "Truth entries", "RECO entries", "MVA entries")
+      checker = lambda x, y, z : x == y and (y == z and (True, "OK") or (False, "FAIL!")) or (False, "FAIL!")
+      SignalCheckIt = checker(SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries)
+      BackgroundCheckIt = checker(BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries)
+      print "%-20s %15i %15s %15s %5s" % ("Signal", SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries, SignalCheckIt[1])
+      print "%-20s %15i %15s %15s %5s" % ("Background", BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries, BackgroundCheckIt[1])
+      if not SignalCheckIt[0] or not BackgroundCheckIt[0]:
+         raise IOError:  ", either signal or background Truth/Reco/MVA trees are out of sync!"
+
       """
       Get the MVA distributions for the appropriate decay modes
       The goal is to find an operating point (multi dimensional for multinet)
@@ -120,6 +147,14 @@ for algo in algosToPlot:
 
       ThrowAwayCutList = ""
 
+      # Hold a list of TaNC decay modes
+      TaNCDecayModes = []
+      # The TancDecayMode class needs to know (statically) how many total sig/bkg entries there are
+      TancDecayMode.TotalSignalEntries     = TotalSignalEntries
+      TancDecayMode.TotalBackgroundEntries = TotalBackgroundEntries
+      TancDecayMode.TotalSignalPrepass     = SignalPrePassCount
+      TancDecayMode.TotalBackgroundPrepass = BackgroundPrePassCount
+
       for aComputer in mvaCollection:
          # The 'computer' is a cms.PSET, defined originally in 
          # RecoTauTag/TauTagTools/python/TauMVAConfigurations_cfi.py
@@ -137,7 +172,9 @@ for algo in algosToPlot:
             ThrowAwayCutList += ")"
             ThrowAwayCutList += " && !(%s))" % IsolationCutForTraining
             #Add the isolation requirement to the cuts string for determining MVA performace
-            DecayModeCuts += " && %s" % MVASteering.IsolationCutForTraining
+            DecayModeCuts += " && %s" % IsolationCutForTraining
+
+         print DecayModeCuts
 
          # keep track of the remaining possible decay modes. At the end of the day, any decay modes
          # not removed from this list will be marked as failed
@@ -153,18 +190,20 @@ for algo in algosToPlot:
          BackgroundMVAEntries += BackgroundEntries
          SignalHist           = gDirectory.Get("%s_%s" % (SignalMVATreeName, computerName))
          BackgroundHist       = gDirectory.Get("%s_%s" % (BackgroundMVATreeName, computerName))
-         SignalEffCurve       = MakeEfficiencyCurveFromHistogram(SignalHist)
-         BackgroundEffCurve   = MakeEfficiencyCurveFromHistogram(BackgroundHist)
-         MVAEfficiencyCurves.append( (computerName, SignalEntries, BackgroundEntries, SignalEffCurve, BackgroundEffCurve, SignalHist, BackgroundHist) )
 
+         DecayModeToAdd = TancDecayMode(computerName, DecayModeList, SignalHist, BackgroundHist)
+         TaNCDecayModes.append(DecayModeToAdd)
+         #SignalEffCurve       = MakeEfficiencyCurveFromHistogram(SignalHist)
+         #BackgroundEffCurve   = MakeEfficiencyCurveFromHistogram(BackgroundHist)
+         #MVAEfficiencyCurves.append( (computerName, SignalEntries, BackgroundEntries, SignalEffCurve, BackgroundEffCurve, SignalHist, BackgroundHist) )
       #Get entries that are either thrown away via decay mode or isolation
       if len(ThrowAwayCutList) > 0:
          ThrowAwayCutList += " || "
-
       # These decaymodes are throw away, regardless of isolation
       ThrowAwayCutList += BuildCutString(list(NonPreFailList))
 
-      SignalThrownAway = SignalRecoTree.Draw( "Pt",  ThrowAwayCutList, "goff")
+      # Catch the number of entries we throw away
+      SignalThrownAway     = SignalRecoTree.Draw( "Pt",  ThrowAwayCutList, "goff")
       BackgroundThrownAway = BackgroundRecoTree.Draw( "Pt", ThrowAwayCutList, "goff")
 
       SummaryHeaderString    = "%-20s %10s %10s %10s %10s"
@@ -180,14 +219,119 @@ for algo in algosToPlot:
       print SummaryFormatString % ("ThrowAway" , SignalThrownAway   , SignalThrownAway*100.0/TotalSignalEntries   , BackgroundThrownAway   , BackgroundThrownAway*100.0/TotalBackgroundEntries)
       print SummaryFormatString % ("PrePass"   , SignalPrePassCount , SignalPrePassCount*100.0/TotalSignalEntries , BackgroundPrePassCount , BackgroundPrePassCount*100.0/TotalBackgroundEntries)
 
-      for ComputerName, SignalEntries, BackgroundEntries, SignalEffCurve, BackgroundEffCurve, SignalHist, BackgroundHist in MVAEfficiencyCurves:
-         print SummaryFormatString % (ComputerName, SignalEntries, SignalEntries*100.0/TotalSignalEntries, BackgroundEntries, BackgroundEntries*100.0/TotalBackgroundEntries)
+      for aDecayMode in TaNCDecayModes:
+         print SummaryFormatString % (aDecayMode.Name, aDecayMode.NSignal, aDecayMode.NSignal*100.0/aDecayMode.TotalSignalEntries, 
+                                      aDecayMode.NBackground, aDecayMode.NBackground*100.0/aDecayMode.TotalBackgroundEntries)
+      for aDecayMode in TaNCDecayModes:
+         print aDecayMode.Name, aDecayMode.MinMaxTuple
 
       SanityCheckSignal     = SignalNULLCount     + SignalPreFailCount     + SignalPrePassCount     + SignalThrownAway     + SignalMVAEntries
       SanityCheckBackground = BackgroundNULLCount + BackgroundPreFailCount + BackgroundPrePassCount + BackgroundThrownAway + BackgroundMVAEntries
       print SummaryFormatString % ("Total (check):", SanityCheckSignal, SanityCheckSignal*100.0/TotalSignalEntries, SanityCheckBackground, SanityCheckBackground*100.0/TotalBackgroundEntries)
+      #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes, 5000000)
+      #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
+      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
 
-      #Make histogram to store Monte Carlo'd operating points
+      Envelope, EnvelopeInverted = OpCurve.GetOpCurveTGraph()
+      c1 = TCanvas()
+
+      # Let's only use nice colors
+      ColorIndexes = [2,3,4,6,7,8,9]
+
+      CutCurveLegend = TLegend(0.2, 0.15, 0.62, 0.4)
+      CutCurveLegend.SetFillColor(0)
+
+      VeelkenVsEffCurves       = []
+      StandardVsEffCurves      = []
+      VeelkenVsFakeRateCurves  = []
+      StandardVsFakeRateCurves = []
+
+      for color, aDM in zip(ColorIndexes, TancSet.DecayModeList):
+         more = lambda x, y: x > y and x or y 
+         gPad.SetLogy(False)
+         maxValue = more(aDM.SignalMVAOut.GetMaximum()*1.0/aDM.SignalMVAOut.GetEntries(), aDM.BackgroundMVAOut.GetMaximum()*1.0/aDM.BackgroundMVAOut.GetEntries())
+         normedHist = aDM.SignalMVAOut.DrawNormalized()
+         normedHist.GetYaxis().SetRangeUser(0, maxValue)
+         aDM.BackgroundMVAOut.DrawNormalized("same")
+         c1.SaveAs("Plots/%s_NN_dist_%s.png" % (aDM.Name, mvaName))
+
+         NewVeelkenVsEffCurve       = TGraph(len(OpCurve.TancSets))
+         NewStandardVsEffCurve      = TGraph(len(OpCurve.TancSets))
+         NewVeelkenVsFakeRateCurve  = TGraph(len(OpCurve.TancSets))
+         NewStandardVsFakeRateCurve = TGraph(len(OpCurve.TancSets))
+         NewVeelkenVsEffCurve.SetLineColor(color)
+         NewStandardVsEffCurve.SetLineColor(color)
+         NewVeelkenVsFakeRateCurve.SetLineColor(color)
+         NewStandardVsFakeRateCurve.SetLineColor(color)
+         CutCurveLegend.AddEntry(NewVeelkenVsEffCurve, "%10s-QCD:%0.2f%%-Sig:%0.2f%%" % (aDM.Name, aDM.GetBackgroundFraction()*100.0, aDM.GetSignalFraction()*100.0), "l")
+         VeelkenVsEffCurves.append(NewVeelkenVsEffCurve)
+         StandardVsEffCurves.append(NewStandardVsEffCurve)
+         VeelkenVsFakeRateCurves.append(NewVeelkenVsFakeRateCurve)
+         StandardVsFakeRateCurves.append(NewStandardVsFakeRateCurve)
+
+      for index, aSet in enumerate(OpCurve.TancSets):
+         EfficiencyAtPoint = aSet.EstimatedEfficiency
+         FakeRateAtPoint   = aSet.EstimatedFakeRate
+         for cutIndex, cut in enumerate(aSet.GetRescaledCuts()):
+            StandardVsEffCurves[cutIndex].SetPoint(index, EfficiencyAtPoint, cut)
+            StandardVsFakeRateCurves[cutIndex].SetPoint(index, FakeRateAtPoint, cut)
+         for cutIndex, cut in enumerate(aSet.GetVeelkenNormalization()):
+            VeelkenVsEffCurves[cutIndex].SetPoint(index, EfficiencyAtPoint, cut)
+            VeelkenVsFakeRateCurves[cutIndex].SetPoint(index, FakeRateAtPoint, cut)
+
+      gPad.SetLogy(False)
+      gPad.SetLogx(False)
+      VeelkenVsEffCurves[0].Draw("AC")
+      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      VeelkenVsEffCurves[0].GetHistogram().SetTitle("Transormed cut values versus efficiency")
+      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
+      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
+      VeelkenVsEffCurves[0].GetHistogram().GetXaxis().SetTitle("SignalEfficiency")
+
+      for i in range(1, len(VeelkenVsEffCurves)):
+         VeelkenVsEffCurves[i].Draw("same")
+      CutCurveLegend.Draw()
+      c1.Print("Plots/VeelkenVsEff_%s.png" % mvaName)
+
+      StandardVsEffCurves[0].Draw("AC")
+      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      StandardVsEffCurves[0].GetHistogram().SetTitle("Raw cut values versus efficiency")
+      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
+      StandardVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
+      StandardVsEffCurves[0].GetHistogram().GetXaxis().SetTitle("SignalEfficiency")
+
+      for i in range(1, len(StandardVsEffCurves)):
+         StandardVsEffCurves[i].Draw("same")
+      CutCurveLegend.Draw()
+      c1.Print("Plots/StandardVsEff_%s.png" % mvaName)
+
+      gPad.SetLogy(False)
+      gPad.SetLogx(True)
+      VeelkenVsFakeRateCurves[0].Draw("AC")
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      VeelkenVsFakeRateCurves[0].GetHistogram().SetTitle("Transormed cut values versus fake rate")
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetXaxis().SetTitle("QCD fake rate")
+
+      for i in range(1, len(VeelkenVsFakeRateCurves)):
+         VeelkenVsFakeRateCurves[i].Draw("same")
+      CutCurveLegend.Draw()
+      c1.Print("Plots/VeelkenVsFakeRate_%s.png" % mvaName)
+
+      StandardVsFakeRateCurves[0].Draw("AC")
+      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      StandardVsFakeRateCurves[0].GetHistogram().SetTitle("Raw cut values versus fake rate")
+      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
+      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
+      StandardVsFakeRateCurves[0].GetHistogram().GetXaxis().SetTitle("QCD fake rate")
+
+      for i in range(1, len(StandardVsFakeRateCurves)):
+         StandardVsFakeRateCurves[i].Draw("same")
+      CutCurveLegend.Draw()
+      c1.Print("Plots/StandardVsFakeRate_%s.png" % mvaName)
+
+      #Make histogram to hold axis, title settings, etc
       MCHisto = TH2F("%s_%s_histo" % (algo, mvaName), "%s_%s_histo" % (algo, mvaName),500, 0.0, 1.0, 1500, FakeRatePlotLowerBound, 0.03)
       MCHisto.GetXaxis().SetTitle("Signal Efficiency")
       MCHisto.GetYaxis().SetTitle("Fake Rate")
@@ -195,9 +339,7 @@ for algo in algosToPlot:
       algoNiceName = algo.replace("pfTauDecayMode", "")
       MCHisto.SetTitle("Efficiency. vs. Fake Rate (%s) (%s)" % (algoNiceName, mvaName))
 
-      FindOperatingPointsByMonteCarlo(MVAEfficiencyCurves, TotalSignalEntries, SignalPrePassCount, TotalBackgroundEntries, BackgroundPrePassCount, MCHisto, 5000000)
-
-      Envelope, EnvelopeInverted = MakeEnvelopeGraph(MCHisto)
+      #Draw summary curves
       Envelope.SetLineColor(46)
 
       BackgroundPrePassFakeRate = BackgroundPrePassCount*1.0/TotalBackgroundEntries
@@ -205,11 +347,10 @@ for algo in algosToPlot:
       BackgroundPrePassLine.SetLineColor(1)
       BackgroundPrePassLine.SetLineStyle(2)
 
-
       BenchmarksToDraw = []
       BMPColorIndex = 2
       for aBenchMark in BenchmarkPoints:
-         effAtPoint = FindOperatingPointEfficency(MCHisto, aBenchMark)
+         effAtPoint = EnvelopeInverted.Eval(aBenchMark) #FindOperatingPointEfficency(MCHisto, aBenchMark)
          HorizontalLine = TLine(0, aBenchMark, effAtPoint, aBenchMark)
          VertLine       = TLine(effAtPoint, FakeRatePlotLowerBound, effAtPoint, aBenchMark)
          HorizontalLine.SetLineColor(BMPColorIndex)
@@ -237,12 +378,12 @@ for algo in algosToPlot:
       MyLegend.Draw()
       CutLabel.Draw()
 
-      c1.Print("%s_%s.pdf" % (algoNiceName, mvaName))
+      c1.Print("Plots/%s_%s.png" % (algoNiceName, mvaName))
 
       Envelope.SetLineColor(colorCounter)
       colorCounter += 1
       SummaryGraphs.append(Envelope)
-      SummaryLegend.AddEntry(Envelope,"%s-%s" % (algoNiceName, mvaName), "l")
+      SummaryLegend.AddEntry(Envelope,"%s" % (algoNiceName, mvaName), "l")
 
       #Build the axis titles, etc, if it doesn't a
       if SummaryBackground == 0:
@@ -256,6 +397,6 @@ for aSummaryCurve in SummaryGraphs:
 SummaryLegend.Draw()
 CutLabel.Draw()
 
-c1.Print("Summary.pdf")
+c1.Print("Plots/Summary.png")
 
 

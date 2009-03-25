@@ -1,5 +1,7 @@
-from ROOT import TGraph, TH1F
+from ROOT import TGraph, TH1F, TFile, TTree, EColor, TLegend
 import random
+import bisect
+import glob
 
 """
         MVAHelpers.py
@@ -8,9 +10,197 @@ import random
         Helper functions used in various TauTagTools::MVA training scripts
 """
 
+class TancSet:
+   """ Container class of TancCuts - contains a set of cuts corresponding to a TaNC operating point"""
+   #Static member pointing to the decay mode info
+   DecayModeList = []
+   def __init__(self, myCuts):
+      self.TancCuts            = myCuts
+      self.EstimatedEfficiency = 0
+      self.EstimatedFakeRate   = 0
+      self.GetEfficiency(myCuts)
+   def GetEfficiency(self, cuts):
+      if len(cuts) != len(self.DecayModeList):
+         raise TancSetException, "Length of cuts not the same as length of decay mode!"
+      else:
+         self.EstimatedEfficiency = (TancDecayMode.TotalSignalPrepass + sum([ x.SignalPassing(y) for x, y in zip(self.DecayModeList, cuts)]))*1.0/TancDecayMode.TotalSignalEntries
+         self.EstimatedFakeRate   = (TancDecayMode.TotalBackgroundPrepass + sum([ x.BackgroundPassing(y) for x, y in zip(self.DecayModeList, cuts)]))*1.0/TancDecayMode.TotalBackgroundEntries
+   def VeelkenTransform(self, theDM, cut):
+      RescaledCut        = theDM.RescaleCut(cut)
+      SignalFraction     = theDM.GetSignalFraction()
+      BackgroundFraction = theDM.GetBackgroundFraction()
+      if SignalFraction <= 0:
+         return 0.0
+      if BackgroundFraction <= 0:
+         return 1.0
+      if RescaledCut <= 0.0:
+         return 0.0
+      return SignalFraction / (SignalFraction + ( (1/RescaledCut) - 1 )*BackgroundFraction)
+   def GetVeelkenNormalization(self):
+      outputList = [ self.VeelkenTransform(dm, daCut) for dm, daCut in zip(self.DecayModeList, self.TancCuts) ]
+      return outputList
+   def GetRescaledCuts(self):
+      return [ dm.RescaleCut(theCut) for dm, theCut in zip(self.DecayModeList, self.TancCuts) ]
+   def __cmp__(self, other):
+      # predicate, order by fake rate
+      return cmp(self.EstimatedFakeRate, other.EstimatedFakeRate)
+
+class TancDecayMode:
+   """ Holds numberOfSignal and nBackground for each decay mode.  Contains the MVA output distributions for both signal and background """
+   # Static members
+   TotalSignalEntries     = 0
+   TotalBackgroundEntries = 0
+   TotalSignalPrepass     = 0
+   TotalBackgroundPrepass = 0
+   def __init__(self, Name, DecayModes, SignalMVAOut, BackgroundMVAOut):
+      self.Name              = Name
+      self.DecayModes        = DecayModes
+      self.NSignal           = SignalMVAOut.GetEntries()
+      self.NBackground       = BackgroundMVAOut.GetEntries()
+      self.SignalMVAOut      = SignalMVAOut
+      self.BackgroundMVAOut  = BackgroundMVAOut
+      self.SignalEffCurve    = MakeEfficiencyCurveFromHistogram(SignalMVAOut)
+      self.BackgroundEffCurve = MakeEfficiencyCurveFromHistogram(BackgroundMVAOut)
+      self.MinMaxTuple       = MergeMinMaxTuples([GetMinimumAndMaximumOccupiedBin(SignalMVAOut), GetMinimumAndMaximumOccupiedBin(BackgroundMVAOut)])
+      self.SignalMVAOut.SetTitle("Signal NN output distribution for %s" % self.Name)
+      self.BackgroundMVAOut.SetTitle("Background NN output distribution for %s" % self.Name)
+      self.SignalMVAOut.GetXaxis().SetTitle("NN output")
+      self.BackgroundMVAOut.GetXaxis().SetTitle("NN output")
+      self.SignalMVAOut.SetLineColor(EColor.kRed)
+      self.BackgroundMVAOut.SetLineColor(EColor.kBlue)
+      self.CurveLegend = TLegend(0.7, 0.15, 0.92, 0.4)
+      self.CurveLegend.AddEntry(self.SignalMVAOut, "Signal", "l")
+      self.CurveLegend.AddEntry(self.BackgroundMVAOut, "Background", "l")
+   def SignalAndBackgroundPassing(self, cut):
+      return (SignalPassing(self, cut), BackgroundPassing(self,cut))
+   def SignalPassing(self, cut):
+      return self.NSignal*1.0*self.SignalEffCurve.Eval(cut)
+   def BackgroundPassing(self, cut):
+      return self.NBackground*1.0*self.BackgroundEffCurve.Eval(cut)
+   def GetSignalFraction(self):
+      return self.NSignal*1.0/self.TotalSignalEntries
+   def GetBackgroundFraction(self):
+      return self.NBackground*1.0/self.TotalBackgroundEntries
+   def GetDecayModeCutString(self):
+      return BuildCutString(self.DecayModes)
+   def RescaleCut(self, cut):
+      """ Get the cut, rescaled to between 0 and 1 """
+      # Scale between -1 and 1.  Some outliers exist, due to to the linear outputnode of TMVA
+      # window the cuts in -1 and 1
+      TrueMin, TrueMax = (-1, 1)
+      if cut < -1:
+         cut = -1
+      if cut > 1:
+         cut = 1
+      cut -= TrueMin  #scale lower end to zero
+      cut /= (TrueMax - TrueMin)
+      return cut
+   def __str__(self):
+      print self.DecayModes
+      return ""
+      #return CommafyListOfStrings([ PrettifyDecayMode[mode] for mode in self.DecayModes ])
+
+
+def FakeRateLine(minEff, minFakeRate, maxEff, maxFakeRate):
+   """ Returns a lambda function describing a straight line between two eff/fakerate points """
+   return lambda eff:( (maxFakeRate - minFakeRate)/(maxEff - minEff) )*(eff - minEff)
+
+class TancOperatingCurve:
+   """ Container class of TancSets - maps out a signal/background curve """
+   def __init__(self):
+      self.TancSets = []
+      self.MinimumFakeRate = 1.
+      self.EffAtMinimumFakeRate = 1.
+      self.MaximumFakeRate = 0.
+      self.EffAtMaximumFakeRate = 0.
+      self.ApproxFunction = 0
+
+   def InsertOperatingPoint(self, theTancSet):
+      """ Insert a new operating point into the curve.  The TancOperatingCurve will manage the points to ensure that the operating point is convex """
+      EstimatedFakeRateForThisPoint = theTancSet.EstimatedFakeRate
+      EstimatedEffForThisPoint      = theTancSet.EstimatedEfficiency
+      #print "Adding %f eff - %f FR" % (EstimatedEffForThisPoint, EstimatedFakeRateForThisPoint)
+
+      # Approximation to reduce array lookups
+      # if are away from the endpoints of the curve, compute a straight line from (minFake, minEff) to (maxFake, maxEff)
+      # the new point must be below (lower fake rate) than the corresponding point on this line, for the same efficiency.
+      if EstimatedEffForThisPoint < self.EffAtMaximumFakeRate and EstimatedFakeRateForThisPoint > self.MinimumFakeRate and EstimatedEffForThisPoint > self.EffAtMinimumFakeRate and EstimatedFakeRateForThisPoint < self.MaximumFakeRate:
+         if EstimatedFakeRateForThisPoint > self.ApproxFunction(EstimatedEffForThisPoint):
+            return 0
+
+      # Find the point in the curve (ordered by increasing FR) to insert this point
+      insertionIndex = bisect.bisect_left(self.TancSets, theTancSet)
+      # Check to make sure that our efficiency beats the next lowest fake rate,
+      # otherwise we don't really care about this point
+      if insertionIndex == 0:
+         # if this is the lowest FR yet, always insert
+         self.TancSets.insert(0, theTancSet)
+         return 0
+      # Otherwise check to see if this is a good point - namely,
+      # is the signal efficiency higher than the efficiency of the next lower fake rate point?
+      # This assures convexity wrt to the next lowest point.  Otherwise, this point sucks and we can 
+      # throw it away.
+      if self.TancSets[insertionIndex-1].EstimatedEfficiency > EstimatedEffForThisPoint:
+         # this point sucks, do nothing
+         return 0
+      # If we reach this point, the point is a good one.  Now, before insertion, 
+      # delete any points that have a higher fake rate, but lower efficiency
+      DoneDeleting = False
+      EndDeletionIndex = insertionIndex
+      while not DoneDeleting and EndDeletionIndex < len(self.TancSets):
+         if self.TancSets[EndDeletionIndex].EstimatedEfficiency < EstimatedEffForThisPoint:
+            #this point has higher fake rate, but lower eff.  Let's delete it
+            EndDeletionIndex += 1
+         else:
+            # we have guaranteed convexity about the point we are inserting, break
+            DoneDeleting = True
+      # delete the bad points - we do this first, to preserve the deletion indexes we jut computed
+      del self.TancSets[insertionIndex:EndDeletionIndex]
+      #Insert our new point
+      self.TancSets.insert(insertionIndex, theTancSet)
+
+      # update our approximations
+      if EstimatedFakeRateForThisPoint < self.MinimumFakeRate:
+         self.MinimumFakeRate = EstimatedFakeRateForThisPoint
+         self.EffAtMinimumFakeRate = EstimatedEffForThisPoint
+         self.ApproxFunction = FakeRateLine(self.EffAtMinimumFakeRate, self.MinimumFakeRate, self.EffAtMaximumFakeRate, self.MaximumFakeRate)
+      elif EstimatedFakeRateForThisPoint > self.MaximumFakeRate:
+         self.MaximumFakeRate = EstimatedFakeRateForThisPoint
+         self.EffAtMaximumFakeRate = EstimatedEffForThisPoint
+         self.ApproxFunction = FakeRateLine(self.EffAtMinimumFakeRate, self.MinimumFakeRate, self.EffAtMaximumFakeRate, self.MaximumFakeRate)
+      return 1
+   def GetOpCurveTGraph(self):
+      """ returns a tuple w/ TGraph describing the eff/bkg, bkg, eff pairs """
+      #MinFakeRate = self.TancSets[0].EstimatedFakeRate
+      #MaxFakeRate = self.TancSets[len(self.TancSets)-1].EstimatedFakeRate
+      outputVersusEff      = TGraph( len(self.TancSets ) )
+      outputVersusFakeRate = TGraph( len(self.TancSets ) )
+      for index, aCutPoint in enumerate(self.TancSets):
+         outputVersusEff.SetPoint(index, aCutPoint.EstimatedEfficiency, aCutPoint.EstimatedFakeRate)
+         outputVersusFakeRate.SetPoint(index, aCutPoint.EstimatedFakeRate, aCutPoint.EstimatedEfficiency)
+      return (outputVersusEff, outputVersusFakeRate)
+
+def MakeIntegralHistogram(InputHistogram):
+   """ produces a TGraph f(x0) giving the percentage of total entries with x > x0 """
+   output = TGraph(InputHistogram.GetNbinsX())
+   totalEntries = InputHistogram.GetEntries()
+   passedSoFar = InputHistogram.GetBinContent(0) #underflow bin
+   for x in range(1, InputHistogram.GetNbinsX()+1):
+      passedSoFar += InputHistogram.GetBinContent(x)
+      output.SetPoint(x, InputHistogram.GetBinCenter(x), passedSoFar*1.0/totalEntries)
+   return output
+
+def MakeEffHistogram(numerator, denominator):
+   for bin in range(1, denominator.GetNbinsX()+1):
+      numeratorContents = numerator.GetBinContent(bin)
+      denominatorContents = denominator.GetBinContent(bin)
+      if denominatorContents > 0:
+         scaled = numeratorContents*1.0/denominatorContents
+         numerator.SetBinContent(bin, scaled)
+
+
 def BuildCutString(decayModeList):
-   ''' Format a cut string (for use in TTree::Draw) to select all decay modes given in the input decayModeList'''
-   output = "!__PREFAIL__ && ("
+   output = "!__PREFAIL__ && !__ISNULL__ && ("
    for index, aDecayMode in enumerate(decayModeList):
       if aDecayMode == 0:
          output += "(!__PREPASS__ && DecayMode == 0)"  #exclude isolated one prong taus from training, as there is no info
@@ -55,7 +245,7 @@ def BuildSingleEfficiencyCurve(SignalHistogram, SignalTotal, BackgroundHistogram
    return output
 
 # Binning of all efficiency curves.  nBins must be large to accurately build the eff-fake rate curve
-EfficiencyCurveBinning = { 'nBins' : 1000, 'xlow' : -2.0, 'xhigh' : 2.0 }
+EfficiencyCurveBinning = { 'nBins' : 3000, 'xlow' : -3.0, 'xhigh' : 3.0 }
 
 def GetTTreeDrawString(varexp, histoName, nBins = EfficiencyCurveBinning['nBins'], xlow = EfficiencyCurveBinning['xlow'], xhigh = EfficiencyCurveBinning['xhigh']):
    '''Format a TTree Draw->stored histo string.  ROOT is a mess!'''
@@ -71,88 +261,63 @@ def MakeEfficiencyCurveFromHistogram(histogram):
       output.SetPoint(x, histogram.GetBinCenter(x+1), 1.0-integralSoFar)
    return output
 
-def FindOperatingPointsByMonteCarlo(MVAEfficiencyCurves, TotalSignalEntries, SignalPrepass, TotalBackgroundEntries, BackgroundPrepass, OutputHistogram, MonteCaroloIterations):
-   ''' Takes set of N MVA Efficiency curves for for individual MVA points, and the number of tau candidates associated with them
-       Throws [MonteCarloIterations] sets of N random numbers, computes the sig. eff & fake rate for that point, and adds it to the output histogram.'''
-   maxFakeRate = 0.50
-   computers = []
-   for ComputerName, SignalEntries, BackgroundEntries, SignalEffCurve, BackgroundEffCurve, SignalHistogram, BackgroundHistogram in MVAEfficiencyCurves: 
-      upperLimitOnMVAPoint = -10000
-      lowerLimitOnMVAPoint = 10000
-      for bin in range(1,SignalHistogram.GetNbinsX()+1):
-         if SignalHistogram.GetBinContent(bin) + BackgroundHistogram.GetBinContent(bin) > 0:
-            upperLimitOnMVAPoint = SignalHistogram.GetBinCenter(bin)
-         if BackgroundEffCurve.Eval(BackgroundHistogram.GetBinCenter(bin)) > maxFakeRate:
-            lowerLimitOnMVAPoint = BackgroundHistogram.GetBinCenter(bin)
-      #repack
-      ComputerInfo = (SignalEntries, SignalEffCurve, BackgroundEntries, BackgroundEffCurve, upperLimitOnMVAPoint, lowerLimitOnMVAPoint)
-      computers.append(ComputerInfo)
-   print "Doing %i Monte Carlo iterations on operating points" % MonteCaroloIterations
-   reportEvery = MonteCaroloIterations/35;
-   for iIter in xrange(0,MonteCaroloIterations):
-      if iIter % reportEvery == 0:
-         print "%0.02f%% complete" % (iIter*100.0/MonteCaroloIterations)
-      SignalPassing     = SignalPrepass
-      BackgroundPassing = BackgroundPrepass
-      for SignalEntries, SignalEffCurve, BackgroundEntries, BackgroundEffCurve, upperLimit, lowerLimit in computers:
-         #throw random cut
-         randomCut         =  random.uniform(lowerLimit, upperLimit)
-         SignalPassing     += SignalEntries*SignalEffCurve.Eval(randomCut)
-         BackgroundPassing += BackgroundEntries*BackgroundEffCurve.Eval(randomCut)
+def GetMinimumAndMaximumOccupiedBin(histo):
+   """ Returns tuple (minX, maxX) of the minimum and maximum non-zero bins in a histogram"""
+   nBins = histo.GetNbinsX()
+   maxBin = 1
+   minBin = nBins
+   for iBin in range(1, nBins+1):
+      if histo.GetBinContent(iBin):
+         if iBin > maxBin:
+            maxBin = iBin
+         if iBin < minBin:
+            minBin = iBin
+   return (histo.GetBinLowEdge(minBin), histo.GetBinLowEdge(maxBin) + histo.GetBinWidth(maxBin))
 
-      SignalEfficiency     = SignalPassing*1.0/TotalSignalEntries
-      BackgroundEfficiency = BackgroundPassing*1.0/TotalBackgroundEntries
-      OutputHistogram.Fill(SignalEfficiency, BackgroundEfficiency)
+def MergeMinMaxTuples(tupleList):
+   """ Merges a list of (min, max) tuples into (MIN, MAX) so that the result spans all of them"""
+   less = lambda x, y: x < y and x or y
+   more = lambda x, y: x > y and x or y 
+   window = lambda x, y: ( less(x[0], y[0]), more(x[1], y[1]) )
+   return reduce(window, tupleList)
 
-def MakeConvex(xyPointsList):
-   '''takes a list of xy points, and makes it into a 1-to-1, increasing function'''
-   #slow but whatever
-   outputCopy = []
-   for index1 in range(0, len(xyPointsList)):
-      eff1, fakeRate1 = xyPointsList[index1]
-      #make sure there are no lower fake rates for higher efficiencies
-      keepThisPoint = True
-      for index2 in range(index1+1, len(xyPointsList)):
-         eff2, fakeRate2 = xyPointsList[index2]
-         if fakeRate2 < fakeRate1 and eff2 > eff1:
-            keepThisPoint = False
-            break
-      if keepThisPoint:
-         outputCopy.append( (eff1, fakeRate1) )
-   return outputCopy
+def PrettifyDecayMode(mode):
+   """ Returns a ROOT style latex string translating a decay mode index into a human readable form """
+   modeString = ""
+   numTracks = (mode / 5) + 1
+   numPiZero = mode % 5
+   for iter in range(0, numTracks):
+      modeString += "#pi"
+      modeString += "^{#pm}"
+   for iter in range(0, numPiZero):
+      modeString += "#pi^{0}"
 
-def FindOperatingPointEfficency(InputHisto, DesiredBackground):
-   ''' find the best bin whose upper edge is under the background rate '''
-   highestXBinWithNonZeroContent = 0
-   for ybin in range(1,InputHisto.GetNbinsY()+1):
-      if InputHisto.GetYaxis().GetBinUpEdge(ybin) > DesiredBackground:
-         break
-      for xbin in range(highestXBinWithNonZeroContent, InputHisto.GetNbinsX()+1):
-         if InputHisto.GetBinContent(xbin, ybin) > 0:
-            highestXBinWithNonZeroContent = xbin
-   return InputHisto.GetXaxis().GetBinLowEdge(highestXBinWithNonZeroContent)
+def CommafyListOfStrings(strings):
+   """ Concatenate a list of strings, seperating them when necessary by a comma """
+   funcy = lambda x, y: "%s, %s" % (x,y)
+   output = reduce(funcy, strings)
+   return output
 
-def MakeEnvelopeGraph(OperatingPointsHistogram):
-   """
-   Return a TGraph function that envelopes the monte-carlo generated output histogram
-   Note, the Y axis must be the fake rate, and the X axis must be the signal efficiency
-   """
-   points = []
-   #find the minimum fake rate @ each signal efficiency
-   for xbin in range(1, OperatingPointsHistogram.GetNbinsX()+1):
-      # always take the most conservative bin corner
-      efficiency = OperatingPointsHistogram.GetXaxis().GetBinLowEdge(xbin)
-      for ybin in range(1, OperatingPointsHistogram.GetNbinsY()+1):
-         if OperatingPointsHistogram.GetBinContent(xbin, ybin) > 0:
-            FakeRate = OperatingPointsHistogram.GetYaxis().GetBinUpEdge(ybin)
-            points.append( (efficiency, FakeRate) )
-            break
-#   points         = MakeConvex(points)
-   output         = TGraph(len(points))
-   outputInverted = TGraph(len(points))
-   for i,(x,y) in enumerate(points):
-      output.SetPoint(i, x, y)
-      outputInverted.SetPoint(i, y, x)
-   return (output, outputInverted)
+def ListTrainingStatistics():
+   summaryFormatString = "%(netname)-25s %(Signal)12i %(Background)15i %(algoname)-30s"
+   headerFormatString = "%(netname)-25s %(Signal)12s %(Background)15s %(algoname)-30s"
+   print "--------------------------------------------------------------------------------------"
+   print headerFormatString % { 'netname' : "Neural net", 'Signal' : "NSignal", 'Background' : "NBackground", 'algoname' : "Algoname"}
+   print "--------------------------------------------------------------------------------------"
+   for aTrainDir in glob.glob("TrainDir*"):
+      printDict = {}
+      trainWords = aTrainDir.split("_")
+      # get signal entries
+      printDict['netname'] = trainWords[1]
+      printDict['algoname'] = trainWords[2]
+      tempSignalFile = TFile("%s/signal.root" % aTrainDir, "READ")
+      tempSignalTree = tempSignalFile.Get("train")
+      printDict['Signal'] = tempSignalTree.GetEntries()
+
+      tempBackgroundFile = TFile("%s/background.root" % aTrainDir, "READ")
+      tempBackgroundTree = tempBackgroundFile.Get("train")
+      printDict['Background'] = tempBackgroundTree.GetEntries()
+
+      print summaryFormatString % printDict
 
 

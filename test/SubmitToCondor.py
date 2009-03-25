@@ -18,7 +18,7 @@ lowQCD      =  ( "SubmitBkg.jdl"    , nEventsPerJob , 20 , 30 )
 midQCD      =  ( "SubmitBkg.jdl"    , nEventsPerJob , 30 , 50 ) 
 highQCD     =  ( "SubmitBkg.jdl"    , nEventsPerJob , 50 , 80 ) 
 
-submitters = [signalBlock, lowQCD, midQCD, highQCD]
+submitters = [signalBlock, vlowQCD, lowQCD, midQCD, highQCD]
 #submitters = [ lowQCD, midQCD, highQCD]
 #submitters = [signalBlock,  midQCD]
 

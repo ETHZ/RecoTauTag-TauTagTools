@@ -79,7 +79,6 @@ process.source = cms.Source("PythiaSource",
     )
 )
 
-# Common inputs, with fake conditions
 process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 # Common inputs
 #process.load("FastSimulation.Configuration.CommonInputs_cff")

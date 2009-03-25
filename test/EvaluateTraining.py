@@ -34,11 +34,10 @@ PhysicsTools = PyCintex.Namespace("PhysicsTools")
 for anAlgo in myTauAlgorithms:
    for aModule in myModules:
       computerName = aModule.computerName.value()
-      mvaFile = os.path.join(TauTagToolsWorkingDirectory, "test", "TrainDir_%s_%s" % (computerName, anAlgo), "%s.mva" % computerName)
+      mvaFile = GetTrainingFile(computerName, anAlgo)
       if not os.path.exists(mvaFile):
          print "Expected %s to exits, but it doesn't! Have you completed the training?" % mvaFile
          raise MVAError
-
 
 #Now, get the different trees into this file
 # we need, for signal and background
@@ -65,8 +64,10 @@ for name, chain in BackgroundChains.iteritems():
 #Fix the chain names
 for name,chain in SignalChains.iteritems():
    chain.SetName("%s_Signal" % name)
+   chain.SetCacheSize(0)
 for name,chain in BackgroundChains.iteritems():
    chain.SetName("%s_Background" % name)
+   chain.SetCacheSize(0)
 
 #Always speak the truth
 SignalChains['truth'].Write()
@@ -80,15 +81,15 @@ for anAlgo in myTauAlgorithms:  #for each algo
       DecayModeMap = {}
       for aModule in mvaCollection:    #different decayMode <--> MVA implentation maps
          computerName = aModule.computerName.value()
-         theTrainedMVA = PhysicsTools.MVAComputer(os.path.join(TauTagToolsWorkingDirectory, "test", "TrainDir_%s_%s" % (computerName, anAlgo), "%s.mva" % computerName))
+         theTrainedMVA = PhysicsTools.MVAComputer(GetTrainingFile(computerName, anAlgo))
          for aDecayMode in aModule.decayModeIndices.value():
             print "Linking decay mode %i to MVA: %s for algorithm %s, MVA collection: %s" % (aDecayMode, computerName, anAlgo, mvaCollectionName)
             DecayModeMap[aDecayMode] = theTrainedMVA
       MVAImplementations[anAlgo, mvaCollectionName] = DecayModeMap
 
 #Build the reader class (from the MVA framework) for the signal and background chains
-SignalReaders = dict([ (name, PhysicsTools.TreeReader(chain)) for name, chain in SignalChains.iteritems() ])
-BackgroundReaders = dict([ (name, PhysicsTools.TreeReader(chain)) for name, chain in BackgroundChains.iteritems() ])
+SignalReaders = dict([ (name, PhysicsTools.TreeReader(chain, True, True)) for name, chain in SignalChains.iteritems() ])
+BackgroundReaders = dict([ (name, PhysicsTools.TreeReader(chain, True, True)) for name, chain in BackgroundChains.iteritems() ])
 
 # Variable for TTree branch w/ MVA output 
 mvaout = array( 'f', [0.] )
@@ -119,15 +120,17 @@ for name in myTauAlgorithms:
             break
          nb = SignalChain.GetEntry(entry)
          if nb <= 0:
-            continue
-         #Try and get the computer for this decay mode.  If it doesn't exist,
-         #then we mark it automatically as fail (it is either NULL, or it is some non-usable decay mode, like 50 charged tracks)
-         try:
-            mvaComputer = DecayModeMap[SignalChain.DecayMode]
-            SignalReader.update()
-            mvaout[0] = SignalReader.fill(mvaComputer)
-         except KeyError:
-            mvaout[0] = -2.0
+            print "Root read error!"
+            mvaout[0] = -2.5
+         else:
+            #Try and get the computer for this decay mode.  If it doesn't exist,
+            #then we mark it automatically as fail (it is either NULL, or it is some non-usable decay mode, like 50 charged tracks)
+            try:
+               mvaComputer = DecayModeMap[SignalChain.DecayMode]
+               SignalReader.update()
+               mvaout[0] = SignalReader.fill(mvaComputer)
+            except KeyError:
+               mvaout[0] = -2.0
          SignalOutput.Fill()
       #Close the stuff we are done with
       SignalChain.AddFriend(SignalOutput)
@@ -152,15 +155,17 @@ for name in myTauAlgorithms:
             break
          nb = BackgroundChain.GetEntry(entry)
          if nb <= 0:
-            continue
-         #Try and get the computer for this decay mode.  If it doesn't exist,
-         #then we mark it automatically as fail
-         try:
-            mvaComputer = DecayModeMap[BackgroundChain.DecayMode]
-            BackgroundReader.update()
-            mvaout[0] = BackgroundReader.fill(mvaComputer)
-         except KeyError:
-            mvaout[0] = -1.0
+            print "Root read error!"
+            mvaout[0] = 2.5
+         else:
+            #Try and get the computer for this decay mode.  If it doesn't exist,
+            #then we mark it automatically as fail
+            try:
+               mvaComputer = DecayModeMap[BackgroundChain.DecayMode]
+               BackgroundReader.update()
+               mvaout[0] = BackgroundReader.fill(mvaComputer)
+            except KeyError:
+               mvaout[0] = 2.0
          BackgroundOutput.Fill()
       #Close the stuff we are done with
       BackgroundChain.AddFriend(BackgroundOutput)
