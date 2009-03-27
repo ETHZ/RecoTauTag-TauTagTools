@@ -15,7 +15,7 @@ if len(MVASteering.myTauAlgorithms) > 1:
          Please modify it so that it only includeds the algorithm on which the TaNC is to be used."
 
 algorithm = MVASteering.myTauAlgorithms[0]
-myconnect   = cms.string('sqlite_file:Example.db')  #or frontier, etc
+myconnect   = cms.string('sqlite_file:TancLocal.db')  #or frontier, etc
 mytag       = cms.string('MyTestMVATag')
 mytimetype  = cms.untracked.string('runnumber')
 print ""
