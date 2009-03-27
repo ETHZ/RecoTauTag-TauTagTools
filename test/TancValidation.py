@@ -77,7 +77,6 @@ process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauMVAFromDB")
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
 process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")           # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 
-process.ReRunTauID = cms.Sequence(process.PFTauHighEfficiency*process.pfTauDecayModeHighEfficiency)
 
 # #######################################################
 #       Load the TancDiscriminator 
@@ -108,7 +107,7 @@ process.RunValidation = cms.Sequence(
     process.saveTauEff)
 
 process.p = cms.Path(
-      process.ReRunTauID +
+      process.PFTau +
       process.RunTanc +
       process.RunValidation
       )

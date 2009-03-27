@@ -19,7 +19,7 @@ from RecoTauTag.TauTagTools.TauMVAConfigurations_cfi import *
 
         Define the MVA configurations (ie TaNC) to be used in training/testing
                 - which neural net 
-                - which algorithms (pfTauHighEfficiency, etc)
+                - which algorithms (shrinkingConePFTauDecayModeProducer, etc)
         Define locations of train/test ROOT files
 """
 #######  USER PARAMETERS  #######################################
@@ -47,7 +47,7 @@ MVACollections['MultiNetIso'] = MultiNetIso.value()
 IsolationCutForTraining = "Alt$(ChargedOutlierPt[0], 0) < 1.0 && Alt$(NeutralOutlierPt[0], 0) < 1.5" #no tracks above 1 GeV, no gammas above 1.5  GeV
 
 #Define the PFRecoTauDecayMode source to use (in the case of more than one separate directories will be created for each training sample)
-myTauAlgorithms = ["pfTauDecayModeHighEfficiency"]
+myTauAlgorithms = ["shrinkingConePFTauDecayModeProducer"]
 
 """
 Example of multiple algorithms
