@@ -15,7 +15,7 @@ from TaNCCutFinder import *
 """
 
 #Plot multiple different algorithms, if desired.
-algosToPlot = ["pfTauDecayModeHighEfficiency"]
+algosToPlot = ["shrinkingConePFTauDecayModeProducer"]
 #A list of the MVAs to compare
 mvasToPlot  = ["TaNC", "MultiNetIso", ]
 

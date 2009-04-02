@@ -51,7 +51,7 @@ process.TauMVAFromDB = cms.ESSource("PoolDBESSource",
 		record = cms.string('TauTagMVAComputerRcd'),
 		tag = cms.string('MyTestMVATag')
 	)),
-	connect = cms.string('sqlite_file:Example.db'),
+	connect = cms.string('sqlite_file:/afs/cern.ch/user/f/friis/scratch0/Example.db'),
 	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService')
 )
 # necessary to prevent conflict w/ Fake BTau conditions
@@ -132,10 +132,9 @@ process.tauMVATrainerBackground.outputRootFileName="%s/output_%i_%i.root" % (roo
 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
-                      process.PFTauHighEfficiency*
+                      process.PFTau*
 #                      process.pfRecoTauProducerInsideOut*
 #                      process.pfTauDecayModeInsideOut*
-                      process.pfTauDecayModeHighEfficiency*
                       process.makeMCQCD*
                       process.matchMCQCDHighEfficiency*
                       process.pfRecoTauDiscriminationByMVAHighEfficiency)
@@ -147,7 +146,6 @@ from RecoParticleFlow.Configuration.RecoParticleFlow_EventContent_cff import *
 myOutputCommands = cms.untracked.vstring(
    'drop *'
    ,'keep *_genParticles*_*_*'
-   ,'keep *_pfTauDecayMode*_*_*'
    ,'keep *_matchMCTau*_*_*'
    ,'keep *_matchMCQCD*_*_*'
    ,'keep *_makeMCTau*_*_*'
