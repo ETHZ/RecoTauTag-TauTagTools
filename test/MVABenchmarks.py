@@ -2,7 +2,7 @@ from ROOT import TLegend, TPaveText, TLine, gSystem, gDirectory, gROOT, TCanvas,
 
 import os
 
-from MVASteering   import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers    import *
 from TaNCCutFinder import *
 
@@ -113,7 +113,7 @@ for algo in algosToPlot:
       print "%-20s %15i %15s %15s %5s" % ("Signal", SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries, SignalCheckIt[1])
       print "%-20s %15i %15s %15s %5s" % ("Background", BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries, BackgroundCheckIt[1])
       if not SignalCheckIt[0] or not BackgroundCheckIt[0]:
-         raise IOError:  ", either signal or background Truth/Reco/MVA trees are out of sync!"
+         raise IOError,  ", either signal or background Truth/Reco/MVA trees are out of sync!"
 
       """
       Get the MVA distributions for the appropriate decay modes

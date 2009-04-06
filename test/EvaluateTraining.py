@@ -19,7 +19,7 @@ import os
 import sys
 from array import array
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
-from MVASteering import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 
 #PyRoot madness to get the MVA support classes
 import PyCintex
