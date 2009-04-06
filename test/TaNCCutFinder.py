@@ -8,7 +8,7 @@ from ROOT import TGraph, TH1F, TH2F, TCanvas, TPad, TLegend, TPaveText, TLine, E
 import os
 import random
 
-from MVASteering import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers import *
 
 """

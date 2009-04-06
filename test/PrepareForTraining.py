@@ -24,7 +24,7 @@ from ROOT import TTree, TChain, TFile, gDirectory, TEntryList, Long
 import FWCore.ParameterSet.Config as cms
 
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
-from MVASteering import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers  import *
 
 #sys.stdout = open("TancPrepare.log","w")

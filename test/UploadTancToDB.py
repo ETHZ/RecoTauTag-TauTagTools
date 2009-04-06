@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 import RecoTauTag.TauTagTools.TauMVAConfigurations_cfi
 import os
 
-import MVASteering
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 
 # Copy TaNC training files into a local SQLite file
 # Adapted from PhysicsTools/MVATrainer/test/testWriteMVAComputerCondDB_cfg.py
@@ -10,13 +10,13 @@ import MVASteering
 # Modifications by Evan Friis
 
 # Make sure we are only dealing w/ one algorithm...
-if len(MVASteering.myTauAlgorithms) > 1:
+if len(myTauAlgorithms) > 1:
    raise RuntimeError, "ERROR: more than one tau algorithm is defined in MVASteering.py; this feature should be used only for algorithm evaluation.  \
          Please modify it so that it only includeds the algorithm on which the TaNC is to be used."
 
-algorithm = MVASteering.myTauAlgorithms[0]
+algorithm = myTauAlgorithms[0]
 myconnect   = cms.string('sqlite_file:TancLocal.db')  #or frontier, etc
-mytag       = cms.string('MyTestMVATag')
+mytag       = cms.string('TauNeuralClassifier')
 mytimetype  = cms.untracked.string('runnumber')
 print ""
 print "***************************************************"
@@ -36,7 +36,7 @@ for aNeuralNet in RecoTauTag.TauTagTools.TauMVAConfigurations_cfi.TaNC.value():
    # Get the name of this neural net
    neuralNetName = aNeuralNet.computerName.value()
    # Make sure we have the .mva training done
-   mvaFileLocation = MVASteering.GetTrainingFile(neuralNetName, algorithm)
+   mvaFileLocation = GetTrainingFile(neuralNetName, algorithm)
    if not os.path.exists(mvaFileLocation):
       raise IOError, "Expected trained .mva file at %s, it doesn't exist!" % mvaFileLocation
    # god bless you, python
@@ -67,7 +67,7 @@ process.PoolDBOutputService = cms.Service("PoolDBOutputService",
 	timetype = mytimetype,
 	connect = myconnect,
 	toPut = cms.VPSet(cms.PSet(
-		record = cms.string('TauTagMVAComputerRcd'),
+		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
 		tag = mytag
 	))
 )
