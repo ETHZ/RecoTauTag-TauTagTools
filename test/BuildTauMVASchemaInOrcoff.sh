@@ -6,7 +6,7 @@
 eval `scramv1 runtime -sh`
 
 pool_build_object_relational_mapping \
-        -f $CMSSW_RELEASE_BASE/src/CondFormats/PhysicsToolsObjects/xml/MVAComputerContainer_basic_0.xml \
+        -f $CMSSW_BASE/src/RecoTauTag/TauTagTools/xml/MVAComputerContainer_basic_0.xml \
 	-d CondFormatsPhysicsToolsObjects \
 	-c oracle://cms_orcoff_prep/CMS_COND_BTAU \
         -u cms_cond_btau \
