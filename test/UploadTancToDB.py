@@ -67,7 +67,7 @@ process.PoolDBOutputService = cms.Service("PoolDBOutputService",
 	timetype = mytimetype,
 	connect = myconnect,
 	toPut = cms.VPSet(cms.PSet(
-		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
+		record = cms.string('TauTagMVAComputerRcd'),
 		tag = mytag
 	))
 )
