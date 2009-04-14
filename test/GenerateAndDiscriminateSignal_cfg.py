@@ -29,30 +29,6 @@ jobNumber=RPL_RUN
 nEvents=RPL_EVENTS
 '''
 
-'''
-****************************************************
-*****   Retrieve MVA from Conditions DB   **********
-****************************************************
-*****   Important fields:                 **********
-*****      connect string                 **********
-*****      database tag                   **********
-****************************************************
-'''
-from CondCore.DBCommon.CondDBSetup_cfi import *
-
-process.TauMVAFromDB = cms.ESSource("PoolDBESSource",
-	CondDBSetup,
-	timetype = cms.untracked.string('runnumber'),
-	toGet = cms.VPSet(cms.PSet(
-		record = cms.string('TauTagMVAComputerRcd'),
-		tag = cms.string('MyTestMVATag')
-	)),
-	connect = cms.string('sqlite_file:Example.db'),
-	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService')
-)
-# necessary to prevent conflict w/ Fake BTau conditions
-process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauMVAFromDB")
-
 #get a random number from the batch/job number for reproducibility (not robust)
 import random
 random.seed(batchNumber)
@@ -105,24 +81,19 @@ process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeteriminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
-process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
-process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
-process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
-process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi")
-
-process.tauMVATrainerSignal.outputRootFileName="%s/output_%i_%i.root" % (rootFileOutputPath, batchNumber, jobNumber)
+process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")
+# necessary to prevent conflict w/ Fake BTau conditions
+process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauTagMVAComputerRecord")
+#print process.BTauMVAJetTagComputerRecord.toGet
+#process.BTauMVAJetTagComputerRecord.toGet[0].tag = 'TauNeuralClassifier22X'
+#process.BTauMVAJetTagComputerRecord.connect = 'oracle://cms_orcoff_prep/CMS_COND_BTAU'
+#process.BTauMVAJetTagComputerRecord.DBParameters.authenticationPath = '/afs/cern.ch/cms/DB/conddb'
 
 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
-                      process.PFTauHighEfficiency*
-#                      process.pfRecoTauProducerInsideOut*
-#                      process.pfTauDecayModeInsideOut*
-                      process.pfTauDecayModeHighEfficiency*
-                      process.makeMC*
-                      process.matchMCTausHighEfficiency*
-                      process.pfRecoTauDiscriminationByMVAHighEfficiency)
+                      process.PFTau
+                      )
 
 #keeps/drops
 from RecoTauTag.Configuration.RecoTauTag_EventContent_cff import *
@@ -131,7 +102,6 @@ from RecoParticleFlow.Configuration.RecoParticleFlow_EventContent_cff import *
 myOutputCommands = cms.untracked.vstring(
    'drop *'
    ,'keep *_genParticles*_*_*'
-   ,'keep *_pfTauDecayMode*_*_*'
    ,'keep *_matchMCTau*_*_*'
    ,'keep *_matchMCQCD*_*_*'
    ,'keep *_makeMCTau*_*_*'
