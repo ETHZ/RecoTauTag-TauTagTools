@@ -38,7 +38,7 @@ MVACollections['TaNC'] = TaNC.value()  # <--- defined in TauMVAConfigurations_cf
 # MVACollections['SingleNet'] = SingleNetBasedTauID.value()       
 
 # isolation applied, neural net for each decay mode
-MVACollections['MultiNetIso'] = MultiNetIso.value()
+#MVACollections['MultiNetIso'] = MultiNetIso.value()
 
 # isolation applied, single neural net 
 #MVACollections['SingleNetIso'] = [SingleNetIso]
@@ -63,12 +63,13 @@ BackgroundRootDir           = os.path.join(TauTagToolsWorkingDirectory, "test", 
 #Globs to get files for training and evaluation.  If you want to ensure different sets, you can do something like
 # add a requirement such as *[0123].root for training and *[4].root.  (files not ending in four used for trianing, ending in four used for testing)
 SignalFileTrainingGlob     = "%s/*[012356789].root" % SignalRootDir
-#BackgroundFileTrainingGlob = "%s/*82953*0.root" % BackgroundRootDir
 BackgroundFileTrainingGlob = "%s/*[012356789].root" % BackgroundRootDir
 
 SignalFileTestingGlob     = "%s/*4.root" % SignalRootDir
 BackgroundFileTestingGlob = "%s/*4.root" % BackgroundRootDir
 
+SignalFileDevGlob     = "%s/*.root" % SignalRootDir
+BackgroundFileDevGlob = "%s/*.root" % BackgroundRootDir
 
 #################################################################
 #####  DO NOT MODIFY BELOW THIS LINE (experts only) #############

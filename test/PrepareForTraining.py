@@ -11,6 +11,10 @@
 """
 
 
+# If true, output will be weighted such that the signal and background distributions have the same
+#  Pt-Eta distribution.  To generate the weights file, run python BuildWeights.py
+UseWeights = True
+
 import os
 import sys
 # Get CMSSW base
@@ -25,10 +29,8 @@ import FWCore.ParameterSet.Config as cms
 
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
-from MVAHelpers  import *
-
-#sys.stdout = open("TancPrepare.log","w")
-#sys.stderr = open("TancPrepare.err","w")
+from MVAHelpers import *
+from array import array
 
 #Keep track of the number of events we have
 summaryInformation = []
@@ -41,6 +43,17 @@ for aModule in myModules:
 
 decayModePreselection = BuildCutString(list(allDecayModes))
 
+WeightsFile  = 0
+WeightOutput = array('f', [0.])  # global used to branch TTrees
+
+if UseWeights:
+   print "Loading weights.root..."
+   WeightsLoc = os.path.join(TauTagToolsWorkingDirectory, 'test', 'weights.root')
+   if os.path.exists(WeightsLoc):
+      WeightsFile = TFile.Open(WeightsLoc)
+   else:
+      raise IOError, "weights file %s does not exist!  Try running BuildWeights.py or set UseWeights to false." % WeightsLoc
+
 for aTauAlgorithm in myTauAlgorithms:
    print "Creating training directories for the %s algorithm." % aTauAlgorithm
    # Create TChains (need to use internal root glob..)
@@ -51,6 +64,8 @@ for aTauAlgorithm in myTauAlgorithms:
 
    print "Chained %i signal files."     % SignalChain.Add(SignalFileTrainingGlob,0)
    print "Chained %i background files." % BackgroundChain.Add(BackgroundFileTrainingGlob,0)
+   #print "Chained %i signal files."     % SignalChain.Add(SignalFileDevGlob,0)
+   #print "Chained %i background files." % BackgroundChain.Add(BackgroundFileDevGlob,0)
 
    SignalChain.Write()
    BackgroundChain.Write()
@@ -60,6 +75,8 @@ for aTauAlgorithm in myTauAlgorithms:
 
    SignalChain.GetEntry(0)
    BackgroundChain.GetEntry(0)
+   SignalChain.SetCacheSize(0)
+   BackgroundChain.SetCacheSize(0)
 
    print "Pruning non-relevant entries."
 
@@ -81,7 +98,6 @@ for aTauAlgorithm in myTauAlgorithms:
       computerName = aModule.computerName.value() #convert to python string
       #build decay mode cut string
       decayModeList = aModule.decayModeIndices.value()
-#      decayModeCuts = "!__ISNULL__ && "
       decayModeCuts = ""
       decayModeCuts += BuildCutString(decayModeList)
 
@@ -99,6 +115,21 @@ for aTauAlgorithm in myTauAlgorithms:
       # Copy the headers w/ branches, etc.
       outputSignalTree = SignalChain.CloneTree(0)
       outputSignalTree.SetName("train")
+
+      SignalWeightHisto     = 0
+      SignalBackgroundHisto = 0
+
+      if UseWeights:
+         SignalWeightHisto     = WeightsFile.Get("SignalWeightPtVsEta_%s_%s" % (aTauAlgorithm, computerName))
+         BackgroundWeightHisto = WeightsFile.Get("BackgroundWeightPtVsEta_%s_%s" % (aTauAlgorithm, computerName))
+         try:
+            SignalWeightHisto.GetNbinsX()
+            BackgroundWeightHisto.GetNbinsX()
+         except AttributeError:
+            raise IOError, "Error retrieving weight histograms for %s, %s" % (aTauAlgorithm, computerName)
+         outputSignalTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
+         print "Loaded weight histograms."
+
       # Get the entries from this chain that we want
       SignalChain.SetEntryList(SignalEntryList)
       SignalChain.Draw(">>Temp_SignalList", decayModeCuts, "entrylist")
@@ -115,6 +146,10 @@ for aTauAlgorithm in myTauAlgorithms:
          if nb <= 0:
             print "ERROR!!!", number, doot, nb
          else:
+            if UseWeights:
+               MyPt  = SignalChain.Pt + SignalChain.OutlierSumPt
+               MyEta = SignalChain.Eta
+               WeightOutput[0] = SignalWeightHisto.GetBinContent(SignalWeightHisto.FindBin(MyPt, MyEta))
             outputSignalTree.Fill()
 
       SignalChain.SetEntryList(0)
@@ -132,8 +167,9 @@ for aTauAlgorithm in myTauAlgorithms:
       # Make a new tree for the subset
       # Copy the headers w/ branches, etc.
       outputBackgroundTree = BackgroundChain.CloneTree(0)
-      print outputBackgroundTree
       outputBackgroundTree.SetName("train")
+      if UseWeights:
+         outputBackgroundTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
       # Get the entries from this chain that we want
       BackgroundChain.SetEntryList(BackgroundEntryList)
       BackgroundChain.Draw(">>Temp_BackgroundList", decayModeCuts, "entrylist")
@@ -151,6 +187,10 @@ for aTauAlgorithm in myTauAlgorithms:
          if BytesRead <= 0:
             print "ERROR!!!", globalnumber, doot, BytesRead
          else:
+            if UseWeights:
+               MyPt  = BackgroundChain.Pt + BackgroundChain.OutlierSumPt
+               MyEta = BackgroundChain.Eta
+               WeightOutput[0] = BackgroundWeightHisto.GetBinContent(BackgroundWeightHisto.FindBin(MyPt, MyEta))
             outputBackgroundTree.Fill()
 
       BackgroundChain.SetEntryList(0)

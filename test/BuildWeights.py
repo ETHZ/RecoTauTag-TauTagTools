@@ -7,12 +7,14 @@ Author: Evan K. Friis, UC Davis (friis@physics.ucdavis.edu)
 Computes the pt-eta distribution of both signal and backround training events, for each different
 neural net type.  
 
+NOTE:  In the future, this should be reimplemented, to only loop over the files created in their respective TrainDirs. 
+
 """
 
 import os
 import sys
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
-from MVASteering import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers import *
 from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas
 
@@ -47,10 +49,12 @@ decayModePreselection = BuildCutString(list(allDecayModes))
 
 #Add the appropriate files in
 for name, chain in SignalChains.iteritems():
-   chain.Add(SignalFileTrainingGlob)
+   #chain.Add(SignalFileTrainingGlob)
+   chain.Add('finishedJobsSignal/*root')
 
 for name, chain in BackgroundChains.iteritems():
-   chain.Add(BackgroundFileTrainingGlob)
+   #chain.Add(BackgroundFileTrainingGlob)
+   chain.Add('finishedJobsBackground/*root')
 
 #Fix the chain names
 for name,chain in SignalChains.iteritems():
@@ -69,8 +73,8 @@ EtaMax   = 2.5
 
 TestPtNBins = 120
 TestPtMax   = 120
-TestCanvas  = TCanvas("testc", "testc", 1500, 500)
-TestCanvas.Divide(3,1)
+TestCanvas  = TCanvas("testc", "testc", 2000, 500)
+TestCanvas.Divide(4,1)
 TestCanvas.cd(1)
 
 #Map each decay mode - algorithm to a signal and background histogram
@@ -79,14 +83,26 @@ for anAlgo in myTauAlgorithms:  #for each algo
       DecayModeMap = {}
       for aModule in mvaCollection:    #different decayMode <--> MVA implentation maps
          computerName = aModule.computerName.value()
-         SignalName     = "SignalPtVsEta_%s_%s_%s"      %  (anAlgo , mvaCollectionName , computerName)
-         BackgroundName = "BackgroundPtVsEta_%s_%s_%s"  %  (anAlgo , mvaCollectionName , computerName)
-         WeightName     = "WeightPtVsEta_%s_%s_%s"      %  (anAlgo , mvaCollectionName , computerName)
-         SignalHisto     = TH2F(SignalName     , SignalName     , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
-         BackgroundHisto = TH2F(BackgroundName , BackgroundName , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
-         WeightHisto     = TH2F(WeightName     , WeightName     , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
+         """
+         SignalName           = "SignalPtVsEta_%s_%s_%s"       %  (anAlgo , mvaCollectionName , computerName)
+         BackgroundName       = "BackgroundPtVsEta_%s_%s_%s"   %  (anAlgo , mvaCollectionName , computerName)
+         WeightName           = "WeightPtVsEta_%s_%s_%s"       %  (anAlgo , mvaCollectionName , computerName)
+         SignalWeightName     = "SignalWeightPtVsEta_%s_%s_%s" %  (anAlgo , mvaCollectionName , computerName)
+         BackgroundWeightName = "BackgroundWeightPtVsEta_%s_%s_%s" %  (anAlgo , mvaCollectionName , computerName)
+         """
+         SignalName           = "SignalPtVsEta_%s_%s"       %  (anAlgo ,  computerName)
+         BackgroundName       = "BackgroundPtVsEta_%s_%s"   %  (anAlgo ,  computerName)
+         WeightName           = "WeightPtVsEta_%s_%s"       %  (anAlgo ,  computerName)
+         SignalWeightName     = "SignalWeightPtVsEta_%s_%s" %  (anAlgo ,  computerName)
+         BackgroundWeightName = "BackgroundWeightPtVsEta_%s_%s" %  (anAlgo ,  computerName)
+
+         SignalHisto           = TH2F(SignalName           , SignalName           , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
+         BackgroundHisto       = TH2F(BackgroundName       , BackgroundName       , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
+         WeightHisto           = TH2F(WeightName           , WeightName           , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
+         SignalWeightHisto     = TH2F(SignalWeightName     , SignalWeightName     , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
+         BackgroundWeightHisto = TH2F(BackgroundWeightName , BackgroundWeightName , len(PtBins)-1 , PtBins , EtaNBins , 0 , EtaMax)
          print "Linking computer %s to weight histograms." % computerName
-         DecayModeMap[computerName] = (SignalHisto, BackgroundHisto, WeightHisto)
+         DecayModeMap[computerName] = (SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackgroundWeightHisto)
       MVAImplementations[anAlgo, mvaCollectionName] = DecayModeMap
 
 summaryString = "%-40s %-20s %-30s %10i %10i %10.03f"
@@ -143,14 +159,14 @@ for name in myTauAlgorithms:
 
          DecayModeCut = BuildCutString(decayModes)
 
-         SignalHisto, BackgroundHisto, WeightHisto = DecayModeMap[computerName]
+         SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackgroundWeightHisto = DecayModeMap[computerName]
 
          xValue = Double(0)
          yValue = Double(0)
          # Draw the pt & eta distribution for events that will be passed to this net
          # TTree::Draw returns TGraph
-         SignalTestHisto     = TH2F("SignalTest", "SignalTest", TestPtNBins, 0, TestPtMax, EtaNBins, 0, EtaMax)
-         BackgroundTestHisto = TH2F("BackgroundTest", "BackgroundTest", TestPtNBins, 0, TestPtMax, EtaNBins, 0, EtaMax)
+         SignalTestHisto     = TH2F("SignalTest_%s_%s" % (computerName, name), "SignalTest", TestPtNBins, 0, TestPtMax, EtaNBins, 0, EtaMax)
+         BackgroundTestHisto = TH2F("BackgroundTest_%s_%s" % (computerName, name), "BackgroundTest", TestPtNBins, 0, TestPtMax, EtaNBins, 0, EtaMax)
 
          SignalChain.Draw("Pt+Sum$(OutlierPt):abs(Eta)", DecayModeCut)
          SignalGraph      = gPad.GetPrimitive("Graph");
@@ -175,11 +191,14 @@ for name in myTauAlgorithms:
             for yBin in range(1, SignalHisto.GetNbinsY()+1):
                NormalizedSignal = SignalHisto.GetBinContent(xBin, yBin)*SignalNormFactor
                NormalizedBackground = BackgroundHisto.GetBinContent(xBin, yBin)*BackgroundNormFactor
-               #NormalizedSignal = SignalHisto.GetBinContent(xBin, yBin)
-               #NormalizedBackground = BackgroundHisto.GetBinContent(xBin, yBin)
                LowerWeight = less(NormalizedSignal, NormalizedBackground)
                WeightSum += LowerWeight
                WeightHisto.SetBinContent(xBin, yBin, LowerWeight)
+               SignalWeight     =  NormalizedSignal > 0 and LowerWeight/NormalizedSignal or 0.0 
+               BackgroundWeight =  NormalizedBackground > 0 and LowerWeight/NormalizedBackground or 0.0 
+               WeightHisto.SetBinContent(xBin, yBin, LowerWeight)
+               SignalWeightHisto.SetBinContent(xBin, yBin, SignalWeight)
+               BackgroundWeightHisto.SetBinContent(xBin, yBin, BackgroundWeight)
 
          #### BEGIN TESTING CODE #####
 
@@ -219,12 +238,12 @@ for name in myTauAlgorithms:
          for xBin in xrange(1, SignalWeightedHisto.GetNbinsX()+1):
             xValue = SignalWeightedHisto.GetXaxis().GetBinCenter(xBin)
             for yBin in xrange(1, SignalWeightedHisto.GetNbinsY()+1):
-               yValue = SignalWeightedHisto.GetYaxis().GetBinCenter(yBin)
-               theWeight = WeightHisto.GetBinContent(WeightHisto.FindBin(xValue, yValue))
-               #theSignalWeight = theWeight#BackgroundHisto.GetBinContent(BackgroundHisto.FindBin(xValue, yValue))*1.0/BackgroundHisto.GetEntries()
-               #theBackgroundWeight = theWeight#SignalHisto.GetBinContent(SignalHisto.FindBin(xValue, yValue))*1.0/SignalHisto.GetEntries()
-               theSignalWeight = BackgroundHisto.GetBinContent(BackgroundHisto.FindBin(xValue, yValue))*1.0/BackgroundHisto.GetEntries()
-               theBackgroundWeight = SignalHisto.GetBinContent(SignalHisto.FindBin(xValue, yValue))*1.0/SignalHisto.GetEntries()
+               yValue              = SignalWeightedHisto.GetYaxis().GetBinCenter(yBin)
+               theWeight           = WeightHisto.GetBinContent(WeightHisto.FindBin(xValue, yValue))
+               theSignalWeight     = SignalWeightHisto.GetBinContent(WeightHisto.FindBin(xValue, yValue))
+               theBackgroundWeight = BackgroundWeightHisto.GetBinContent(WeightHisto.FindBin(xValue, yValue))
+               #theSignalWeight = BackgroundHisto.GetBinContent(BackgroundHisto.FindBin(xValue, yValue))*1.0/BackgroundHisto.GetEntries()
+               #theBackgroundWeight = SignalHisto.GetBinContent(SignalHisto.FindBin(xValue, yValue))*1.0/SignalHisto.GetEntries()
                SignalContent = SignalWeightedHisto.GetBinContent(xBin, yBin)
                BackgroundContent = BackgroundWeightedHisto.GetBinContent(xBin, yBin)
                #print "x: ", xValue, " y: ", yValue, " w: ", theWeight, " sig: ", SignalContent, " bkg: ", BackgroundContent
@@ -245,6 +264,15 @@ for name in myTauAlgorithms:
 
          SignalWeightedHistoNormed.GetYaxis().SetRangeUser(0, upperLimit*1.1)
 
+         TestCanvas.cd(4)
+
+         gPad.SetLogx(True)
+
+         WeightHisto.Draw("box")
+         WeightHisto.GetXaxis().SetTitle("Pt")
+         WeightHisto.GetYaxis().SetTitle("Eta")
+         WeightHisto.SetTitle("Weighting Histogram")
+
          TestCanvas.SaveAs("%s_%s.png" % (mvaCollectionName, computerName))
 
          del SignalTestHisto
@@ -258,7 +286,9 @@ for name in myTauAlgorithms:
          print summaryString % (name, mvaCollectionName, computerName, SignalSubEntries, BackgroundSubEntries, WeightSum)
 
       # write our histograms
-      for DecayMode, (SignalHisto, BackgroundHisto, WeightHisto) in DecayModeMap.iteritems():
+      for DecayMode, (SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackgroundWeightHisto) in DecayModeMap.iteritems():
          SignalHisto.Write()
          BackgroundHisto.Write()
          WeightHisto.Write()
+         SignalWeightHisto.Write()
+         BackgroundWeightHisto.Write()
