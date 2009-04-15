@@ -81,14 +81,7 @@ process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
-process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")
-# necessary to prevent conflict w/ Fake BTau conditions
-process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauTagMVAComputerRecord")
-#print process.BTauMVAJetTagComputerRecord.toGet
-#process.BTauMVAJetTagComputerRecord.toGet[0].tag = 'TauNeuralClassifier22X'
-#process.BTauMVAJetTagComputerRecord.connect = 'oracle://cms_orcoff_prep/CMS_COND_BTAU'
-#process.BTauMVAJetTagComputerRecord.DBParameters.authenticationPath = '/afs/cern.ch/cms/DB/conddb'
-
+process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")          # Retrieve TaNC from DB
 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*

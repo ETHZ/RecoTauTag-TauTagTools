@@ -101,7 +101,6 @@ process.main = cms.Sequence(process.genParticles*process.genParticlesForJets*pro
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
 # necessary to prevent conflict w/ Fake BTau conditions
 process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")
-process.es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauTagMVAComputerRecord")
 
 process.p1 = cms.Path(process.main*
                       process.vertexreco*
