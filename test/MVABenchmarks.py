@@ -17,7 +17,7 @@ from TaNCCutFinder import *
 #Plot multiple different algorithms, if desired.
 algosToPlot = ["shrinkingConePFTauDecayModeProducer"]
 #A list of the MVAs to compare
-mvasToPlot  = ["TaNC", "MultiNetIso", ]
+mvasToPlot  = ["TaNC", ]#"MultiNetIso", ]
 
 # For each combination of algosToPlot & mvasToPlot the relevant TrainDir_* must exist
 # and the training must have been completed.  These directories can be prepared with the
@@ -28,7 +28,7 @@ KinematicCut = "%(treeName)s.Pt > 20 && %(treeName)s.Pt < 50"  #%s refers to tre
 
 # Define fake rate benchmark points
 BenchmarkPoints = [ 0.01, 0.005, 0.0025, 0.001 ]
-FakeRatePlotLowerBound = 0.0003  # hopefully this number shrinks!
+FakeRatePlotLowerBound = 0.00003  # hopefully this number shrinks!
 
 # Cut label on the plots
 CutLabel = TPaveText(0.2, 0.7, 0.4, 0.8, "brNDC")
@@ -106,7 +106,7 @@ for algo in algosToPlot:
       BackgroundMVATreeEntries = BackgroundMVATree.GetEntries()
 
       print "Checking to make sure Trees are the right size.."
-      print "%-20s %15s %15s 15s" % ("", "Truth entries", "RECO entries", "MVA entries")
+      print "%-20s %15s %15s %15s" % ("", "Truth entries", "RECO entries", "MVA entries")
       checker = lambda x, y, z : x == y and (y == z and (True, "OK") or (False, "FAIL!")) or (False, "FAIL!")
       SignalCheckIt = checker(SignalTruthTreeEntries, SignalRecoTreeEntries, SignalMVATreeEntries)
       BackgroundCheckIt = checker(BackgroundTruthTreeEntries, BackgroundRecoTreeEntries, BackgroundMVATreeEntries)
@@ -134,6 +134,12 @@ for algo in algosToPlot:
       SignalPreFailCount     = SignalRecoTree.Draw(     "Pt" , "__PREFAIL__" , "goff" )
       BackgroundPreFailCount = BackgroundRecoTree.Draw( "Pt" , "__PREFAIL__" , "goff" )
 
+      if not ExcludePrepassAndPrefail:
+         SignalPrePassCount     = 0
+         BackgroundPrePassCount = 0
+         SignalPreFailCount     = 0
+         BackgroundPreFailCount = 0
+
       NonPreFailList         = set([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14])
 
       # A list of MVA names, percent of total set the sample composes, and 
@@ -145,7 +151,7 @@ for algo in algosToPlot:
       SignalMVAEntries     = 0
       BackgroundMVAEntries = 0
 
-      ThrowAwayCutList = ""
+      ThrowAwayCutList = "(!__ISNULL__ && DecayMode >= 15)"  #always throw away greater than 3 prong
 
       # Hold a list of TaNC decay modes
       TaNCDecayModes = []
@@ -161,6 +167,7 @@ for algo in algosToPlot:
          computerName  = aComputer.computerName.value()
          DecayModeList = aComputer.decayModeIndices.value()
          DecayModeCuts = BuildCutString(DecayModeList)
+         DecayModeCuts += " && %s " % LeadPionRequirementString
          DecayModeSet = set(DecayModeList)
 
          if aComputer.applyIsolation.value():
@@ -200,7 +207,11 @@ for algo in algosToPlot:
       if len(ThrowAwayCutList) > 0:
          ThrowAwayCutList += " || "
       # These decaymodes are throw away, regardless of isolation
-      ThrowAwayCutList += BuildCutString(list(NonPreFailList))
+      ThrowAwayCutList += "(" + BuildCutString(list(NonPreFailList))
+      ThrowAwayCutList += ") || "
+      ThrowAwayCutList += "(!(%s) && !__ISNULL__)" % LeadPionRequirementString 
+
+      print ThrowAwayCutList
 
       # Catch the number of entries we throw away
       SignalThrownAway     = SignalRecoTree.Draw( "Pt",  ThrowAwayCutList, "goff")
@@ -230,7 +241,7 @@ for algo in algosToPlot:
       print SummaryFormatString % ("Total (check):", SanityCheckSignal, SanityCheckSignal*100.0/TotalSignalEntries, SanityCheckBackground, SanityCheckBackground*100.0/TotalBackgroundEntries)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes, 5000000)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
-      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
+      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  500000)
 
       Envelope, EnvelopeInverted = OpCurve.GetOpCurveTGraph()
       c1 = TCanvas()

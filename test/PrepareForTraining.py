@@ -6,14 +6,13 @@
         Creates subdirectories for each MVA needing training, and builds 
         the appropriate training data set.
 
+        See RecoTauTag/TauTagTools/python/MVASteering_cfi.py for options
+
         Note that in each subdirectory, one must still execute 'root -b -q trainMVA.C'
-        This step is left to the user as it is preferable it be done on a cluser
+        This step is left to the user as it is preferable it be done in parellel
 """
 
 
-# If true, output will be weighted such that the signal and background distributions have the same
-#  Pt-Eta distribution.  To generate the weights file, run python BuildWeights.py
-UseWeights = True
 
 import os
 import sys
@@ -43,8 +42,13 @@ for aModule in myModules:
 
 decayModePreselection = BuildCutString(list(allDecayModes))
 
+if RequireLeadPionPt > 0.0:
+   decayModePreselection += " && "
+   decayModePreselection += LeadPionRequirementString 
+
 WeightsFile  = 0
 WeightOutput = array('f', [0.])  # global used to branch TTrees
+WeightOutput[0] = 1              # if weights aren't used, always set them to 1.
 
 if UseWeights:
    print "Loading weights.root..."
@@ -64,8 +68,6 @@ for aTauAlgorithm in myTauAlgorithms:
 
    print "Chained %i signal files."     % SignalChain.Add(SignalFileTrainingGlob,0)
    print "Chained %i background files." % BackgroundChain.Add(BackgroundFileTrainingGlob,0)
-   #print "Chained %i signal files."     % SignalChain.Add(SignalFileDevGlob,0)
-   #print "Chained %i background files." % BackgroundChain.Add(BackgroundFileDevGlob,0)
 
    SignalChain.Write()
    BackgroundChain.Write()
@@ -81,7 +83,10 @@ for aTauAlgorithm in myTauAlgorithms:
    print "Pruning non-relevant entries."
 
    #Relevance cuts - dont' train on null entries (obviously), isolated single prong entries, or ones marked w/ prefail
-   relevance_cut = "!__ISNULL__ && !__PREPASS__ && !__PREFAIL__ && (%s)" % decayModePreselection
+   relevance_cut = "!__ISNULL__ && (%s)" % decayModePreselection
+   if ExcludePrepassAndPrefail:
+      print "Removing isolated one prongs and three prongs with charge == 3"
+      relevance_cut += " && !__PREPASS__ && !__PREFAIL__"
    SignalChain.Draw(">>Relevant_Signal_%s" % aTauAlgorithm, relevance_cut, "entrylist")
    BackgroundChain.Draw(">>Relevant_Background_%s" % aTauAlgorithm, relevance_cut, "entrylist")
    SignalEntryList     = gDirectory.Get("Relevant_Signal_%s" % aTauAlgorithm)
@@ -92,14 +97,13 @@ for aTauAlgorithm in myTauAlgorithms:
    SignalChain.SetEntryList(SignalEntryList)
    BackgroundChain.SetEntryList(BackgroundEntryList)
 
-
    print "Looping over different MVA types..."
    for aModule in myModules:
       computerName = aModule.computerName.value() #convert to python string
       #build decay mode cut string
       decayModeList = aModule.decayModeIndices.value()
       decayModeCuts = ""
-      decayModeCuts += BuildCutString(decayModeList)
+      decayModeCuts += BuildCutString(decayModeList, ExcludePrepassAndPrefail)
 
       if aModule.applyIsolation.value():
          decayModeCuts += " && %s" % IsolationCutForTraining
@@ -117,18 +121,24 @@ for aTauAlgorithm in myTauAlgorithms:
       outputSignalTree.SetName("train")
 
       SignalWeightHisto     = 0
-      SignalBackgroundHisto = 0
+      BackgroundWeightHisto = 0
 
       if UseWeights:
-         SignalWeightHisto     = WeightsFile.Get("SignalWeightPtVsEta_%s_%s" % (aTauAlgorithm, computerName))
-         BackgroundWeightHisto = WeightsFile.Get("BackgroundWeightPtVsEta_%s_%s" % (aTauAlgorithm, computerName))
+         WeightHistoLabel = "ALL"
+         if WeightByIndividualDecayMode:
+            WeightHistoLabel = computerName
+
+         #FIXME TaNC label is hardcoded here now, need to get the MVA collection name???
+         SignalWeightHisto     = WeightsFile.Get("SignalWeightPtVsEta_%s_TaNC_%s" % (aTauAlgorithm, WeightHistoLabel))
+         BackgroundWeightHisto = WeightsFile.Get("BackgroundWeightPtVsEta_%s_TaNC_%s" % (aTauAlgorithm, WeightHistoLabel))
+
          try:
             SignalWeightHisto.GetNbinsX()
             BackgroundWeightHisto.GetNbinsX()
          except AttributeError:
             raise IOError, "Error retrieving weight histograms for %s, %s" % (aTauAlgorithm, computerName)
-         outputSignalTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
          print "Loaded weight histograms."
+      outputSignalTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
 
       # Get the entries from this chain that we want
       SignalChain.SetEntryList(SignalEntryList)
@@ -148,9 +158,12 @@ for aTauAlgorithm in myTauAlgorithms:
          else:
             if UseWeights:
                MyPt  = SignalChain.Pt + SignalChain.OutlierSumPt
-               MyEta = SignalChain.Eta
+               MyEta = abs(SignalChain.Eta)
                WeightOutput[0] = SignalWeightHisto.GetBinContent(SignalWeightHisto.FindBin(MyPt, MyEta))
-            outputSignalTree.Fill()
+               if WeightOutput[0] > 0:
+                  outputSignalTree.Fill()
+            else:
+               outputSignalTree.Fill()
 
       SignalChain.SetEntryList(0)
 
@@ -168,8 +181,7 @@ for aTauAlgorithm in myTauAlgorithms:
       # Copy the headers w/ branches, etc.
       outputBackgroundTree = BackgroundChain.CloneTree(0)
       outputBackgroundTree.SetName("train")
-      if UseWeights:
-         outputBackgroundTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
+      outputBackgroundTree.Branch("__WEIGHT__", WeightOutput, "__WEIGHT__/F")
       # Get the entries from this chain that we want
       BackgroundChain.SetEntryList(BackgroundEntryList)
       BackgroundChain.Draw(">>Temp_BackgroundList", decayModeCuts, "entrylist")
@@ -189,9 +201,12 @@ for aTauAlgorithm in myTauAlgorithms:
          else:
             if UseWeights:
                MyPt  = BackgroundChain.Pt + BackgroundChain.OutlierSumPt
-               MyEta = BackgroundChain.Eta
+               MyEta = abs(BackgroundChain.Eta)
                WeightOutput[0] = BackgroundWeightHisto.GetBinContent(BackgroundWeightHisto.FindBin(MyPt, MyEta))
-            outputBackgroundTree.Fill()
+               if WeightOutput[0] > 0:
+                  outputBackgroundTree.Fill()  #Don't bother with non-weighted events
+            else:
+               outputBackgroundTree.Fill()
 
       BackgroundChain.SetEntryList(0)
       BackgroundEntries = outputBackgroundTree.GetEntries()
@@ -203,17 +218,18 @@ for aTauAlgorithm in myTauAlgorithms:
 
       #copy the appropriate training file
       xmlFileLoc   = os.path.join(TauTagToolsWorkingDirectory, "xml", "%s.xml" % computerName)
-      #xmlFileDest  = os.path.join(workingDir, "%s.xml" % computerName)
-      #os.system("cp %s %s" % (xmlFileLoc, xmlFileDest))
       os.system("cat trainMVA_template.C | sed 's|RPL_MVA_OUTPUT|%s|' | sed 's|REPLACE_XML_FILE_ABS_PATH|%s|' > %s/trainMVA.C" % (computerName, xmlFileLoc, workingDir))
 
-      summary = (aTauAlgorithm, computerName, SignalEntries, BackgroundEntries)
+      summary = (aTauAlgorithm, computerName, SignalEntries, SignalEntriesToCopy, BackgroundEntries, BackgroundEntriesToCopy)
       summaryInformation.append(summary)
 
 #print summary
-print "*******  Summary **********"
-
+print "**********************************************************************************"
+print "*********************************** Summary **************************************"
+print "**********************************************************************************"
+print "*     NumEvents with weight > 0 (Total NumEvents)                                *"
+print "*--------------------------------------------------------------------------------*"
 for aDatum in summaryInformation:
-   print "%20s %20s: Signal:\t%i\t\tBackground:%i" % aDatum
+   print "*%20s %20s: Signal:\t%i(%i)\t\tBackground:%i(%i)" % aDatum
 
 
