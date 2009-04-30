@@ -3,7 +3,7 @@ BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 Build signal ROOT files to support Tau neural classifier training
 
-$Id: BuildSignal_cfg.py,v 1.8 2009/02/27 22:46:59 friis Exp $ 
+$Id: BuildSignal_cfg.py,v 1.9 2009/03/04 00:35:36 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
@@ -97,6 +97,7 @@ process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
+process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")                       # Standard Tau sequences
 #process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")                    # Uncomment to use InsideOut jets
 process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets

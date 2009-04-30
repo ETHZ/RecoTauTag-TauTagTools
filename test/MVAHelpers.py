@@ -1,7 +1,10 @@
 from ROOT import TGraph, TH1F, TFile, TTree, EColor, TLegend
+import FWCore.ParameterSet.Config as cms
 import random
 import bisect
 import glob
+import copy
+from math import sqrt
 
 """
         MVAHelpers.py
@@ -44,6 +47,11 @@ class TancSet:
    def __cmp__(self, other):
       # predicate, order by fake rate
       return cmp(self.EstimatedFakeRate, other.EstimatedFakeRate)
+   def Distance(self, other):
+      """ Distance in Eff-Log(FakeRate) space to another TancSet """
+      EfficiencyDist = (self.EstimatedEfficiency - other.EstimatedEfficiency)*(self.EstimatedEfficiency - other.EstimatedEfficiency)
+      FakeRateDist = (self.EstimatedFakeRate - other.EstimatedFakeRate)*(self.EstimatedFakeRate - other.EstimatedFakeRate)
+      return sqrt(EfficiencyDist + FakeRateDist)
 
 class TancDecayMode:
    """ Holds numberOfSignal and nBackground for each decay mode.  Contains the MVA output distributions for both signal and background """
@@ -108,34 +116,69 @@ def FakeRateLine(minEff, minFakeRate, maxEff, maxFakeRate):
 class TancOperatingCurve:
    """ Container class of TancSets - maps out a signal/background curve """
    def __init__(self):
-      self.TancSets = []
-      self.MinimumFakeRate = 1.
+      self.TancSets             = []
+      self.MinimumFakeRate      = 1.
       self.EffAtMinimumFakeRate = 1.
-      self.MaximumFakeRate = 0.
+      self.MaximumFakeRate      = 0.
       self.EffAtMaximumFakeRate = 0.
-      self.ApproxFunction = 0
+      self.ApproxFunction       = 0
+      self.MinimumEfficiency    = 0.02     #We want at least 2%
+      self.PointsAdded          = 0        #Keeps track of how many total points have been added.  
+                                           # this will be larger than the number of points in the curve
+                                           # as obsolete point are deleted from the curve
+      self.MinDistanceForInsertion = 0.001 #Minimum distance in Eff-Log(FakeRate) space to add a new point
+                                           # the default value ensures that to add a point, it must be at least
+                                           # a tenth of a percent more efficient than an existent point w/ the same
+                                           # fake rate.
 
    def InsertOperatingPoint(self, theTancSet):
       """ Insert a new operating point into the curve.  The TancOperatingCurve will manage the points to ensure that the operating point is convex """
       EstimatedFakeRateForThisPoint = theTancSet.EstimatedFakeRate
       EstimatedEffForThisPoint      = theTancSet.EstimatedEfficiency
+      
+      if EstimatedEffForThisPoint < self.MinimumEfficiency:
+         return 0
+
+      # Prevent low statitics from blowing things up.
+      if EstimatedFakeRateForThisPoint == 0.:
+         return 0
+
+      # Always do first insertion
+      if not len(self.TancSets):
+         self.TancSets.insert(0, theTancSet)
+         self.PointsAdded += 1
+         return 1
+
       #print "Adding %f eff - %f FR" % (EstimatedEffForThisPoint, EstimatedFakeRateForThisPoint)
 
       # Approximation to reduce array lookups
       # if are away from the endpoints of the curve, compute a straight line from (minFake, minEff) to (maxFake, maxEff)
       # the new point must be below (lower fake rate) than the corresponding point on this line, for the same efficiency.
-      if EstimatedEffForThisPoint < self.EffAtMaximumFakeRate and EstimatedFakeRateForThisPoint > self.MinimumFakeRate and EstimatedEffForThisPoint > self.EffAtMinimumFakeRate and EstimatedFakeRateForThisPoint < self.MaximumFakeRate:
-         if EstimatedFakeRateForThisPoint > self.ApproxFunction(EstimatedEffForThisPoint):
-            return 0
+      #if EstimatedEffForThisPoint < self.EffAtMaximumFakeRate and EstimatedFakeRateForThisPoint > self.MinimumFakeRate and EstimatedEffForThisPoint > self.EffAtMinimumFakeRate and EstimatedFakeRateForThisPoint < self.MaximumFakeRate:
+      #   if EstimatedFakeRateForThisPoint > self.ApproxFunction(EstimatedEffForThisPoint):
+      #      return 0
 
       # Find the point in the curve (ordered by increasing FR) to insert this point
       insertionIndex = bisect.bisect_left(self.TancSets, theTancSet)
+      
+      # Check to see if is far enough away from its neighbooring points to merit insertion
+      #  this prevents too many points from being inserted and slowing down the list bisection
+      ToTheLeftDistance  = 1
+      ToTheRightDistance = 1
+      
+      if insertionIndex > 0:
+         ToTheLeftDistance  = theTancSet.Distance(self.TancSets[insertionIndex-1])
+
+      if ToTheLeftDistance < self.MinDistanceForInsertion: 
+         return 0
+
       # Check to make sure that our efficiency beats the next lowest fake rate,
       # otherwise we don't really care about this point
       if insertionIndex == 0:
          # if this is the lowest FR yet, always insert
          self.TancSets.insert(0, theTancSet)
-         return 0
+         self.PointsAdded += 1
+         return 1
       # Otherwise check to see if this is a good point - namely,
       # is the signal efficiency higher than the efficiency of the next lower fake rate point?
       # This assures convexity wrt to the next lowest point.  Otherwise, this point sucks and we can 
@@ -143,6 +186,7 @@ class TancOperatingCurve:
       if self.TancSets[insertionIndex-1].EstimatedEfficiency > EstimatedEffForThisPoint:
          # this point sucks, do nothing
          return 0
+
       # If we reach this point, the point is a good one.  Now, before insertion, 
       # delete any points that have a higher fake rate, but lower efficiency
       DoneDeleting = False
@@ -154,6 +198,14 @@ class TancOperatingCurve:
          else:
             # we have guaranteed convexity about the point we are inserting, break
             DoneDeleting = True
+
+      if EndDeletionIndex < len(self.TancSets):
+         ToTheRightDistance = theTancSet.Distance(self.TancSets[EndDeletionIndex])
+
+      # Check to make sure that this point is far enough away from the next highest (after deletion) before inserting it.
+      if ToTheRightDistance < self.MinDistanceForInsertion: 
+         return 0
+
       # delete the bad points - we do this first, to preserve the deletion indexes we jut computed
       del self.TancSets[insertionIndex:EndDeletionIndex]
       #Insert our new point
@@ -168,6 +220,7 @@ class TancOperatingCurve:
          self.MaximumFakeRate = EstimatedFakeRateForThisPoint
          self.EffAtMaximumFakeRate = EstimatedEffForThisPoint
          self.ApproxFunction = FakeRateLine(self.EffAtMinimumFakeRate, self.MinimumFakeRate, self.EffAtMaximumFakeRate, self.MaximumFakeRate)
+      self.PointsAdded += 1
       return 1
    def GetOpCurveTGraph(self):
       """ returns a tuple w/ TGraph describing the eff/bkg, bkg, eff pairs """
@@ -199,16 +252,15 @@ def MakeEffHistogram(numerator, denominator):
          numerator.SetBinContent(bin, scaled)
 
 
-def BuildCutString(decayModeList):
-   output = "!__PREFAIL__ && !__ISNULL__ && ("
+def BuildCutString(decayModeList, ExcludePrepassAndPrefail = False):
+   output = "!__ISNULL__ && ("
    for index, aDecayMode in enumerate(decayModeList):
-      if aDecayMode == 0:
-         output += "(!__PREPASS__ && DecayMode == 0)"  #exclude isolated one prong taus from training, as there is no info
-      else:
-         output += "DecayMode == %i" % aDecayMode
+      output += "DecayMode == %i" % aDecayMode
       if index != len(decayModeList)-1:
          output += " || "
    output += ")"
+   if ExcludePrepassAndPrefail:
+      output += " && !__PREPASS__ && !__PREFAIL__"
    return output
 
 def ComputeSeparation(SignalHistogram, BackgroundHistogram):
@@ -259,6 +311,19 @@ def MakeEfficiencyCurveFromHistogram(histogram):
    for x in xrange(0, histogram.GetNbinsX()):
       integralSoFar += histogram.GetBinContent(x+1)*1.0/normalization
       output.SetPoint(x, histogram.GetBinCenter(x+1), 1.0-integralSoFar)
+   return output
+
+def MergeComputerDefintions(ListOfDecayModeComputerModules, OutputName):
+   """ Takes a list of DecayMode computer defintions and concatenates them into a new one. """
+   if len(ListOfDecayModeComputerModules) == 0:
+      raise ValueError, "can't concatenate list of computer modules, list is empty!"
+   output = copy.deepcopy(ListOfDecayModeComputerModules[0])
+   output.computerName = cms.string(OutputName)
+   allDecayModes = set([])
+   for aModule in ListOfDecayModeComputerModules:
+      decayModeList = set(aModule.decayModeIndices.value())
+      allDecayModes |= decayModeList
+   output.decayModeIndices = cms.vint32(list(allDecayModes))
    return output
 
 def GetMinimumAndMaximumOccupiedBin(histo):

@@ -18,6 +18,70 @@ from MVAHelpers import *
         Create performance plots of signal efficiency versus background fake rate
         for the samples. 
 """
+less = lambda x, y: x < y and x or y
+
+def LoopAndAddNewCuts(nIterations, OutputCurve, CutFunction):
+   ''' 
+   Do nIterations and add points to supplied TancCurve.  The CutFunction
+   is method that determines how to randomly generate the candidate cuts
+   '''
+   ReportEvery = nIterations / 5
+   for MCIter in xrange(0, nIterations):
+      if not MCIter % ReportEvery:
+         print "%0.02f%% complete - %i points added, %i in curve" % ( (MCIter*100.0/(nIterations)),
+                                                                      OutputCurve.PointsAdded,
+                                                                      len(OutputCurve.TancSets) )
+      # Get a random cut for each decay mode
+      #cuts = [random.uniform(dm.MinMaxTuple[0], dm.MinMaxTuple[1]) for dm in TancSet.DecayModeList]
+      cuts = CutFunction(OutputCurve, TancSet.DecayModeList)
+      # The TancSet takes care of determing the efficiency, etc
+      NewSet = TancSet(cuts)
+      OutputCurve.InsertOperatingPoint(NewSet)
+
+# Monte Carlo functions to generate sets of cuts
+
+def RandomCuts(aCurve, ListOfDecayModes):
+   """ 
+   Cut function to uniformaly generate cuts over the entire MVA output space.  Used to 
+   initially rough out the TaNC performance curve
+   """
+   cuts = [random.uniform(decayMode.MinMaxTuple[0], decayMode.MinMaxTuple[1]) for decayMode in ListOfDecayModes]
+   return cuts
+
+def CutsAroundCurve(aCurve, ListOfDecayModes):
+   """
+   Cut function to throw cuts around already existing cuts along the entire length of
+   the Tanc performance cuts.  The new cut candidates are distributed normally about the 
+   previous ones with a width that is 1/5 of the distance to the nearest boundary (ie -1, 1)
+   """
+   randomIndex = int(random.uniform(0, len(aCurve.TancSets)-1))
+   if randomIndex > len(aCurve.TancSets)-1:
+      randomIndex = len(aCurve.TancSets)-1
+   TancSetToThrowAround = aCurve.TancSets[randomIndex]
+   cuts = [random.gauss(OldCut, less(abs(OldCut - dm.MinMaxTuple[0]), abs(OldCut - dm.MinMaxTuple[1]))/5) for OldCut, dm in zip(TancSetToThrowAround.TancCuts, TancSetToThrowAround.DecayModeList)]
+   return cuts
+
+def CutsAroundLowEnd(aCurve, ListOfDecayModes):
+   """
+   Similary to cuts around curve, but the width is 1/10 of the distance to the boundaries,
+   and the existing points selected are chosen w/ a triangular distribution, favoring the low 
+   fake rate end of the curve.
+   """
+
+   # Pick a random point in the curve, weighted triangularly (suboptimally) towards the low end, 
+   # and throw points around it's point in ND space
+   myrandom1 = random.uniform(0, len(aCurve.TancSets)-1) # xaxis
+   myrandom2 = random.uniform(0, len(aCurve.TancSets)-1) # yaxis
+   while myrandom1 > myrandom2:  # repeat until we are in the lower triangular portion
+      myrandom1 = random.uniform(0, len(aCurve.TancSets)-1)
+      myrandom2 = random.uniform(0, len(aCurve.TancSets)-1)
+   #myrandom1 is now distributed triangularly
+   randomIndex = int(myrandom1)
+   if randomIndex > len(aCurve.TancSets)-1:
+      randomIndex = len(aCurve.TancSets)-1
+   TancSetToThrowAround = aCurve.TancSets[randomIndex]
+   cuts = [random.gauss(OldCut, less(abs(OldCut - dm.MinMaxTuple[0]), abs(OldCut - dm.MinMaxTuple[1]))/10) for OldCut, dm in zip(TancSetToThrowAround.TancCuts, TancSetToThrowAround.DecayModeList)]
+   return cuts
 
 def MakeOperatingPointCurveByMonteCarlo(TancDecayModeList, MonteCarloIterations, MaxPoints = 7000):
    ''' Takes set of N MVA Efficiency curves for for individual MVA points, and the number of tau candidates associated with them
@@ -25,35 +89,11 @@ def MakeOperatingPointCurveByMonteCarlo(TancDecayModeList, MonteCarloIterations,
 
    TancSet.DecayModeList = TancDecayModeList
    OutputCurve = TancOperatingCurve()
-   PointsAdded = 0
-   ReportEvery = MonteCarloIterations / 35
    print "Doing %i Monte Carlo iterations on operating points" % MonteCarloIterations
-   for MCIter in xrange(0, MonteCarloIterations):
-      if not MCIter % ReportEvery:
-         print "%0.02f%% complete - %i points added, %i in curve" % ( (MCIter*100.0/MonteCarloIterations),
-                                                                      PointsAdded,
-                                                                      len(OutputCurve.TancSets) )
-      if len(OutputCurve.TancSets) > MaxPoints:
-         break
-      # Get a random cut for each decay mode
-      cuts = [random.uniform(dm.MinMaxTuple[0], dm.MinMaxTuple[1]) for dm in TancSet.DecayModeList]
-      # The TancSet takes care of determing the efficiency, etc
-      NewSet = TancSet(cuts)
-      PointsAdded += OutputCurve.InsertOperatingPoint(NewSet)
+   LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, RandomCuts)
+   print "Filling out middle."
+   LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundCurve)
    print "Filling out low end."
-   for MCIter in xrange(0, MonteCarloIterations):
-      # Get on of the best 50 points
-      if not MCIter % ReportEvery:
-         print "%0.02f%% complete - %i points added, %i in curve" % ( (MCIter*100.0/MonteCarloIterations),
-                                                                      PointsAdded,
-                                                                      len(OutputCurve.TancSets) )
-      if len(OutputCurve.TancSets) > MaxPoints:
-         break
-      less = lambda x, y: x < y and x or y
-      # Pick a random point in the curve, and throw points around it's point in ND space
-      TempTancSet = OutputCurve.TancSets[random.randint(0, len(OutputCurve.TancSets)-1)]
-      cuts = [random.gauss(OldCut, less(abs(OldCut - dm.MinMaxTuple[0]), abs(OldCut - dm.MinMaxTuple[1]))/10.0) for OldCut, dm in zip(TempTancSet.TancCuts, TempTancSet.DecayModeList)]
-      NewSet = TancSet(cuts)
-      PointsAdded += OutputCurve.InsertOperatingPoint(NewSet)
+   LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundLowEnd)
    return OutputCurve
 

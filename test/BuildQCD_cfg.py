@@ -109,6 +109,7 @@ process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 process.main = cms.Sequence(process.genParticles*process.genParticlesForJets*process.famosWithParticleFlow)
 
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
+process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")                       # Standard Tau sequences
 #process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")
 process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
