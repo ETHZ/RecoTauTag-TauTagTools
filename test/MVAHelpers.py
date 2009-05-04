@@ -174,16 +174,16 @@ class TancOperatingCurve:
 
       # Check to make sure that our efficiency beats the next lowest fake rate,
       # otherwise we don't really care about this point
-      if insertionIndex == 0:
+      #if insertionIndex == 0:
          # if this is the lowest FR yet, always insert
-         self.TancSets.insert(0, theTancSet)
-         self.PointsAdded += 1
-         return 1
+     #    self.TancSets.insert(0, theTancSet)
+     #    self.PointsAdded += 1
+     #    return 1
       # Otherwise check to see if this is a good point - namely,
       # is the signal efficiency higher than the efficiency of the next lower fake rate point?
       # This assures convexity wrt to the next lowest point.  Otherwise, this point sucks and we can 
       # throw it away.
-      if self.TancSets[insertionIndex-1].EstimatedEfficiency > EstimatedEffForThisPoint:
+      if insertionIndex > 0 and self.TancSets[insertionIndex-1].EstimatedEfficiency > EstimatedEffForThisPoint:
          # this point sucks, do nothing
          return 0
 
@@ -232,6 +232,13 @@ class TancOperatingCurve:
          outputVersusEff.SetPoint(index, aCutPoint.EstimatedEfficiency, aCutPoint.EstimatedFakeRate)
          outputVersusFakeRate.SetPoint(index, aCutPoint.EstimatedFakeRate, aCutPoint.EstimatedEfficiency)
       return (outputVersusEff, outputVersusFakeRate)
+   def GetCutForFakeRate(self, fakerate):
+      """ Returns the closest set of tanc cuts for this fake rate (errs conservatively)"""
+      if self.TancSets[0].EstimatedFakeRate > fakerate or self.TancSets[len(self.TancSets)-1].EstimatedFakeRate < fakerate:
+         raise RuntimeError, " in GetCutForFakeRate, %f is not achievable!" % fakerate
+      for index in xrange(0, len(self.TancSets)-2 ): 
+         if self.TancSets[index+1].EstimatedFakeRate > fakerate:
+            return self.TancSets[index]
 
 def MakeIntegralHistogram(InputHistogram):
    """ produces a TGraph f(x0) giving the percentage of total entries with x > x0 """

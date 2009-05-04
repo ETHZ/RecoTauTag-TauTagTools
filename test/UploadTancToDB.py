@@ -16,7 +16,7 @@ if len(myTauAlgorithms) > 1:
 
 algorithm = myTauAlgorithms[0]
 myconnect   = cms.string('sqlite_file:TancLocal.db')  #or frontier, etc
-mytag       = cms.string('TauNeuralClassifier')
+mytag       = cms.string('TauNeuralClassifier22X')
 mytimetype  = cms.untracked.string('runnumber')
 print ""
 print "***************************************************"

@@ -1,6 +1,7 @@
 from ROOT import TLegend, TPaveText, TLine, gSystem, gDirectory, gROOT, TCanvas, gPad,TF1, TPad, TChain,TH1, TTree, TEventList, TEntryList, THStack, TColor, TFile, gStyle, TH2F
 
 import os
+import time
 
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers    import *
@@ -27,11 +28,17 @@ mvasToPlot  = ["TaNC", ]#"MultiNetIso", ]
 KinematicCut = "%(treeName)s.Pt > 20 && %(treeName)s.Pt < 50"  #%s refers to tree name substituton
 
 # Define fake rate benchmark points
-BenchmarkPoints = [ 0.01, 0.005, 0.0025, 0.001 ]
-FakeRatePlotLowerBound = 0.00003  # hopefully this number shrinks!
+FakeRateBenchmarks = [ (0.01, 'OnePercent'),
+                       (0.005, 'HalfPercent'),
+                       (0.0025, 'QuarterPercent'),
+                       (0.001, 'TenthPercent') ]
+#BenchmarkPoints = [ 0.01, 0.005, 0.0025, 0.001 ]
+BenchmarkPoints = [ value for value, name in FakeRateBenchmarks ]
+
+FakeRatePlotLowerBound = 0.0001  # hopefully this number shrinks!
 
 # Cut label on the plots
-CutLabel = TPaveText(0.2, 0.7, 0.4, 0.8, "brNDC")
+CutLabel = TPaveText(0.15, 0.65, 0.4, 0.8, "brNDC")
 CutLabel.AddText("20 GeV/c < True p_{T} < 50 GeV/c")
 CutLabel.SetFillStyle(0)
 CutLabel.SetBorderSize(0)
@@ -51,6 +58,14 @@ SummaryBackground = 0
 
 if not os.path.exists("Plots"):
    os.mkdir("Plots")
+
+BenchmarkFilePath = os.path.join(TauTagToolsWorkingDirectory, "python/BenchmarkPointCuts_cfi.py")
+if os.path.exists(BenchmarkFilePath):
+   stringifyTime = time.strftime("%d_%b_%H:%M", time.localtime())
+   print "Backing up ../python/BenchmarkPointCuts_cfi.py to ./BenchmarkPointCuts_cfi.py.%s" % stringifyTime
+   os.system("cp %s ./BenchmarkPointCuts_cfi.py.%s" % (BenchmarkFilePath, stringifyTime))
+
+BenchmarkFile = open(BenchmarkFilePath, 'w')
 
 #Get Truth info
 SignalTruthTree     = dataFile.Get("truth_Signal")
@@ -160,6 +175,9 @@ for algo in algosToPlot:
       TancDecayMode.TotalBackgroundEntries = TotalBackgroundEntries
       TancDecayMode.TotalSignalPrepass     = SignalPrePassCount
       TancDecayMode.TotalBackgroundPrepass = BackgroundPrePassCount
+      # these two static variables are updated each time we construct a new decay mode
+      TancDecayMode.TotalSignalMVAEntries     = 0
+      TancDecayMode.TotalBackgroundMVAEntries = 0
 
       for aComputer in mvaCollection:
          # The 'computer' is a cms.PSET, defined originally in 
@@ -241,7 +259,34 @@ for algo in algosToPlot:
       print SummaryFormatString % ("Total (check):", SanityCheckSignal, SanityCheckSignal*100.0/TotalSignalEntries, SanityCheckBackground, SanityCheckBackground*100.0/TotalBackgroundEntries)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes, 5000000)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
-      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  500000)
+      #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  500000)
+      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  50000)
+
+      print "Storing cut points for %s in %s..." % (mvaName, BenchmarkFilePath) 
+      print ""
+      print "------BMP Cut Summary----------"
+      BenchmarkPointCutSummaryString = "%15s %10s %10s"
+      HeaderStringTuple = ("", "Fake Rate", "SignalEff")
+      for aDM in TancSet.DecayModeList:
+         BenchmarkPointCutSummaryString += " %20s"
+         HeaderStringTuple += (aDM.Name,)
+      print BenchmarkPointCutSummaryString % HeaderStringTuple
+
+      for aBMP, BMPName in FakeRateBenchmarks:
+         #meta python
+         NewDictName = "CutSet_%s_%s" % (mvaName, BMPName)
+         BenchmarkFile.write("%s = {}\n" % NewDictName)
+         # Get the cuts for this point 
+         CutsForThisNetThisBMP = OpCurve.GetCutForFakeRate(aBMP)
+
+         SummaryTuple = (BMPName, "%0.3f%%" % (100*CutsForThisNetThisBMP.EstimatedFakeRate), "%0.1f%%" % (100*CutsForThisNetThisBMP.EstimatedEfficiency),)
+
+         GetInterestingStuff = [ (aDM.Name, cut) for aDM, cut in zip(CutsForThisNetThisBMP.DecayModeList, CutsForThisNetThisBMP.TancCuts) ] 
+         for NameKey, CutValue in GetInterestingStuff:
+            SummaryTuple += ("%0.4f" % CutValue,)
+            BenchmarkFile.write("%s['%s']\t\t = %f\n" % (NewDictName, NameKey, CutValue))
+         print BenchmarkPointCutSummaryString % SummaryTuple
+         BenchmarkFile.write("\n")
 
       Envelope, EnvelopeInverted = OpCurve.GetOpCurveTGraph()
       c1 = TCanvas()
@@ -256,6 +301,7 @@ for algo in algosToPlot:
       StandardVsEffCurves      = []
       VeelkenVsFakeRateCurves  = []
       StandardVsFakeRateCurves = []
+      VeelPointsVsFakeRateCurves = []
 
       for color, aDM in zip(ColorIndexes, TancSet.DecayModeList):
          more = lambda x, y: x > y and x or y 
@@ -264,36 +310,49 @@ for algo in algosToPlot:
          normedHist = aDM.SignalMVAOut.DrawNormalized()
          normedHist.GetYaxis().SetRangeUser(0, maxValue)
          aDM.BackgroundMVAOut.DrawNormalized("same")
-         c1.SaveAs("Plots/%s_NN_dist_%s.png" % (aDM.Name, mvaName))
+         c1.SaveAs("Plots/%s_NN_dist_%s.pdf" % (aDM.Name, mvaName))
 
          NewVeelkenVsEffCurve       = TGraph(len(OpCurve.TancSets))
          NewStandardVsEffCurve      = TGraph(len(OpCurve.TancSets))
          NewVeelkenVsFakeRateCurve  = TGraph(len(OpCurve.TancSets))
          NewStandardVsFakeRateCurve = TGraph(len(OpCurve.TancSets))
+         NewVeelPointsVsFakeRateCurve = TGraph(len(OpCurve.TancSets))
+
          NewVeelkenVsEffCurve.SetLineColor(color)
          NewStandardVsEffCurve.SetLineColor(color)
          NewVeelkenVsFakeRateCurve.SetLineColor(color)
          NewStandardVsFakeRateCurve.SetLineColor(color)
+         NewVeelPointsVsFakeRateCurve.SetLineColor(color)
+
          CutCurveLegend.AddEntry(NewVeelkenVsEffCurve, "%10s-QCD:%0.2f%%-Sig:%0.2f%%" % (aDM.Name, aDM.GetBackgroundFraction()*100.0, aDM.GetSignalFraction()*100.0), "l")
          VeelkenVsEffCurves.append(NewVeelkenVsEffCurve)
          StandardVsEffCurves.append(NewStandardVsEffCurve)
          VeelkenVsFakeRateCurves.append(NewVeelkenVsFakeRateCurve)
          StandardVsFakeRateCurves.append(NewStandardVsFakeRateCurve)
+         VeelPointsVsFakeRateCurves.append(NewVeelPointsVsFakeRateCurve)
 
+      # parameterize NN cuts from op curve by Eff & fake rate
       for index, aSet in enumerate(OpCurve.TancSets):
          EfficiencyAtPoint = aSet.EstimatedEfficiency
          FakeRateAtPoint   = aSet.EstimatedFakeRate
-         for cutIndex, cut in enumerate(aSet.GetRescaledCuts()):
+#         for cutIndex, cut in enumerate(aSet.TancCuts):            #from 31X??
+         for cutIndex, cut in enumerate(aSet.GetRescaledCuts()):  
             StandardVsEffCurves[cutIndex].SetPoint(index, EfficiencyAtPoint, cut)
             StandardVsFakeRateCurves[cutIndex].SetPoint(index, FakeRateAtPoint, cut)
          for cutIndex, cut in enumerate(aSet.GetVeelkenNormalization()):
             VeelkenVsEffCurves[cutIndex].SetPoint(index, EfficiencyAtPoint, cut)
             VeelkenVsFakeRateCurves[cutIndex].SetPoint(index, FakeRateAtPoint, cut)
+#         for cutIndex, point in enumerate(aSet.GetVeelkenPoints()):
+#            VeelPointsVsFakeRateCurves[cutIndex].SetPoint(index, FakeRateAtPoint, point)
+
+      outputFile = TFile("MVABenchmarkOperatingCurve.root", "RECREATE")
+      Envelope.SetName("%s_PerformanceCurve" % mvaName)
+      Envelope.Write()
 
       gPad.SetLogy(False)
       gPad.SetLogx(False)
       VeelkenVsEffCurves[0].Draw("AC")
-      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
       VeelkenVsEffCurves[0].GetHistogram().SetTitle("Transormed cut values versus efficiency")
       VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       VeelkenVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -302,10 +361,10 @@ for algo in algosToPlot:
       for i in range(1, len(VeelkenVsEffCurves)):
          VeelkenVsEffCurves[i].Draw("same")
       CutCurveLegend.Draw()
-      c1.Print("Plots/VeelkenVsEff_%s.png" % mvaName)
+      c1.Print("Plots/VeelkenVsEff_%s.pdf" % mvaName)
 
       StandardVsEffCurves[0].Draw("AC")
-      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
       StandardVsEffCurves[0].GetHistogram().SetTitle("Raw cut values versus efficiency")
       StandardVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       StandardVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -314,12 +373,12 @@ for algo in algosToPlot:
       for i in range(1, len(StandardVsEffCurves)):
          StandardVsEffCurves[i].Draw("same")
       CutCurveLegend.Draw()
-      c1.Print("Plots/StandardVsEff_%s.png" % mvaName)
+      c1.Print("Plots/StandardVsEff_%s.pdf" % mvaName)
 
       gPad.SetLogy(False)
       gPad.SetLogx(True)
       VeelkenVsFakeRateCurves[0].Draw("AC")
-      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
       VeelkenVsFakeRateCurves[0].GetHistogram().SetTitle("Transormed cut values versus fake rate")
       VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -328,10 +387,10 @@ for algo in algosToPlot:
       for i in range(1, len(VeelkenVsFakeRateCurves)):
          VeelkenVsFakeRateCurves[i].Draw("same")
       CutCurveLegend.Draw()
-      c1.Print("Plots/VeelkenVsFakeRate_%s.png" % mvaName)
+      c1.Print("Plots/VeelkenVsFakeRate_%s.pdf" % mvaName)
 
       StandardVsFakeRateCurves[0].Draw("AC")
-      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0, 1)
+      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
       StandardVsFakeRateCurves[0].GetHistogram().SetTitle("Raw cut values versus fake rate")
       StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -340,10 +399,22 @@ for algo in algosToPlot:
       for i in range(1, len(StandardVsFakeRateCurves)):
          StandardVsFakeRateCurves[i].Draw("same")
       CutCurveLegend.Draw()
-      c1.Print("Plots/StandardVsFakeRate_%s.png" % mvaName)
+      c1.Print("Plots/StandardVsFakeRate_%s.pdf" % mvaName)
+
+      VeelPointsVsFakeRateCurves[0].Draw("AC")
+#      VeelPointsVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
+      VeelPointsVsFakeRateCurves[0].GetHistogram().SetTitle("Transformed bin content versus fake rate")
+      VeelPointsVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("SigBin*rhoSig/QCDBin*rhoQCD")
+      VeelPointsVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
+      VeelPointsVsFakeRateCurves[0].GetHistogram().GetXaxis().SetTitle("QCD fake rate")
+
+      for i in range(1, len(VeelPointsVsFakeRateCurves)):
+         VeelPointsVsFakeRateCurves[i].Draw("same")
+      CutCurveLegend.Draw()
+      c1.Print("Plots/VeelPointsVsFakeRate_%s.pdf" % mvaName)
 
       #Make histogram to hold axis, title settings, etc
-      MCHisto = TH2F("%s_%s_histo" % (algo, mvaName), "%s_%s_histo" % (algo, mvaName),500, 0.0, 1.0, 1500, FakeRatePlotLowerBound, 0.03)
+      MCHisto = TH2F("%s_%s_histo" % (algo, mvaName), "%s_%s_histo" % (algo, mvaName),500, 0.0, 1.0, 1500, FakeRatePlotLowerBound, 0.1)
       MCHisto.GetXaxis().SetTitle("Signal Efficiency")
       MCHisto.GetYaxis().SetTitle("Fake Rate")
       MCHisto.GetYaxis().CenterTitle()
@@ -357,6 +428,18 @@ for algo in algosToPlot:
       BackgroundPrePassLine = TLine(0, BackgroundPrePassFakeRate, 1, BackgroundPrePassFakeRate)
       BackgroundPrePassLine.SetLineColor(1)
       BackgroundPrePassLine.SetLineStyle(2)
+
+      # Compare to classic cuts
+      ClassicFixed = TGraph(1)
+      ClassicFixed.SetPoint(0, 0.46, 0.016)
+      ClassicFixed.SetMarkerStyle(29)
+      ClassicFixed.SetMarkerSize(3)
+
+      ClassicShrinking = TGraph(1)
+      ClassicShrinking.SetPoint(0, 0.525, 0.04)
+      ClassicShrinking.SetMarkerStyle(23)
+      ClassicShrinking.SetMarkerSize(2.5)
+
 
       BenchmarksToDraw = []
       BMPColorIndex = 2
@@ -374,7 +457,8 @@ for algo in algosToPlot:
 
       MyLegend = TLegend(0.7, 0.15, 0.92, 0.4)
       MyLegend.SetFillColor(0)
-      MyLegend.AddEntry(BackgroundPrePassLine, "Prepass fake rate", "l")
+      if ExcludePrepassAndPrefail:
+         MyLegend.AddEntry(BackgroundPrePassLine, "Prepass fake rate", "l")
 
       c1 = TCanvas()
       gPad.SetLogy()
@@ -386,15 +470,21 @@ for algo in algosToPlot:
          HorizontalLine.Draw()
          VertLine.Draw()
          MyLegend.AddEntry(HorizontalLine, LegendString, "l")
+
+      ClassicFixed.Draw("p")
+      ClassicShrinking.Draw("p")
+      MyLegend.AddEntry(ClassicFixed, "Classic fixed cone", "p")
+      MyLegend.AddEntry(ClassicShrinking, "Classic shrinking cone", "p")
+
       MyLegend.Draw()
       CutLabel.Draw()
 
-      c1.Print("Plots/%s_%s.png" % (algoNiceName, mvaName))
+      c1.Print("Plots/%s_%s.pdf" % (algoNiceName, mvaName))
 
       Envelope.SetLineColor(colorCounter)
       colorCounter += 1
       SummaryGraphs.append(Envelope)
-      SummaryLegend.AddEntry(Envelope,"%s" % (algoNiceName, mvaName), "l")
+      SummaryLegend.AddEntry(Envelope,"%s" %  mvaName, "l")
 
       #Build the axis titles, etc, if it doesn't a
       if SummaryBackground == 0:
@@ -408,6 +498,6 @@ for aSummaryCurve in SummaryGraphs:
 SummaryLegend.Draw()
 CutLabel.Draw()
 
-c1.Print("Plots/Summary.png")
+c1.Print("Plots/Summary.pdf")
 
 

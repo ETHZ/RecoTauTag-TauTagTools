@@ -17,7 +17,7 @@ import sys
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers import *
-from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas
+from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas, gStyle
 
 from array import array
 
@@ -25,6 +25,11 @@ less = lambda x,y: x < y and x or y
 more = lambda x,y: x > y and x or y
 
 gROOT.SetBatch(True)
+gROOT.SetBatch(True)
+gROOT.SetStyle("Plain")
+gStyle.SetOptStat(0)
+gStyle.SetPalette(1)
+gStyle.SetTitleBorderSize(0)
 
 #Now, get the different trees into this file
 # we need, for signal and background
@@ -55,11 +60,13 @@ if RequireLeadPionPt > 0:
 #Add the appropriate files in
 for name, chain in SignalChains.iteritems():
    #chain.Add(SignalFileTrainingGlob)
-   chain.Add('finishedJobsSignal/*root', -1)
+   chain.Add(SignalFileTestingGlob)
+   #chain.Add('finishedJobsSignal/*root', -1)
 
 for name, chain in BackgroundChains.iteritems():
+   chain.Add(BackgroundFileTestingGlob)
    #chain.Add(BackgroundFileTrainingGlob)
-   chain.Add('finishedJobsBackground/*root', -1)
+   #chain.Add('finishedJobsBackground/*root', -1)
 
 #Fix the chain names
 for name,chain in SignalChains.iteritems():
@@ -80,7 +87,7 @@ EtaMax   = 2.5
 
 TestPtNBins = 120
 TestPtMax   = 120
-TestCanvas  = TCanvas("testc", "testc", 2000, 500)
+TestCanvas  = TCanvas("testc", "testc", 4000, 1000)
 TestCanvas.Divide(4,1)
 TestCanvas.cd(1)
 
@@ -325,7 +332,7 @@ for name in myTauAlgorithms:
          WeightHisto.GetYaxis().SetTitle("Eta")
          WeightHisto.SetTitle("Weighting Histogram")
 
-         TestCanvas.SaveAs("%s_%s.png" % (mvaCollectionName, computerName))
+         TestCanvas.SaveAs("%s_%s.pdf" % (mvaCollectionName, computerName))
 
          del SignalTestHisto
          del BackgroundTestHisto
