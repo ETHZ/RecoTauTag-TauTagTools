@@ -15,7 +15,7 @@ import sys
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
 from MVASteering import *
 from MVAHelpers import *
-from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas
+from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas, gStyle
 
 from array import array
 
@@ -23,6 +23,11 @@ less = lambda x,y: x < y and x or y
 more = lambda x,y: x > y and x or y
 
 gROOT.SetBatch(True)
+gROOT.SetBatch(True)
+gROOT.SetStyle("Plain")
+gStyle.SetOptStat(0)
+gStyle.SetPalette(1)
+gStyle.SetTitleBorderSize(0)
 
 #Now, get the different trees into this file
 # we need, for signal and background
@@ -52,10 +57,10 @@ if RequireLeadPionPt > 0:
 
 #Add the appropriate files in
 for name, chain in SignalChains.iteritems():
-   chain.Add('finishedJobsSignal/*root', -1)
+   chain.Add(SignalFileTrainingGlob)
 
 for name, chain in BackgroundChains.iteritems():
-   chain.Add('finishedJobsBackground/*root', -1)
+   chain.Add(BackgroundFileTrainingGlob)
 
 #Fix the chain names
 for name,chain in SignalChains.iteritems():
@@ -76,8 +81,8 @@ EtaMax   = 2.5
 
 TestPtNBins = 120
 TestPtMax   = 120
-TestCanvas  = TCanvas("testc", "testc", 1500, 500)
-TestCanvas.Divide(3,1)
+TestCanvas  = TCanvas("testc", "testc", 4000, 1000)
+TestCanvas.Divide(4,1)
 TestCanvas.cd(1)
 
 def ProduceWeightHistograms(SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackgroundWeightHisto):
@@ -310,7 +315,16 @@ for name in myTauAlgorithms:
 
          SignalWeightedHistoNormed.GetYaxis().SetRangeUser(0, upperLimit*1.1)
 
-         TestCanvas.SaveAs("%s_%s.png" % (mvaCollectionName, computerName))
+         TestCanvas.cd(4)
+
+         gPad.SetLogx(True)
+
+         WeightHisto.Draw("box")
+         WeightHisto.GetXaxis().SetTitle("Pt")
+         WeightHisto.GetYaxis().SetTitle("Eta")
+         WeightHisto.SetTitle("Weighting Histogram")
+
+         TestCanvas.SaveAs("%s_%s.pdf" % (mvaCollectionName, computerName))
 
          del SignalTestHisto
          del BackgroundTestHisto
