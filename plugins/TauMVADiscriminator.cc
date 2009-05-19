@@ -13,7 +13,7 @@
 //
 // Original Author:  Evan K. Friis, UC Davis (friis@physics.ucdavis.edu)
 //         Created:  Fri Aug 15 11:22:14 PDT 2008
-// $Id: TauMVADiscriminator.cc,v 1.5.2.5 2009/04/14 14:55:57 friis Exp $
+// $Id: TauMVADiscriminator.cc,v 1.5.2.6 2009/05/05 13:53:00 friis Exp $
 //
 //
 
@@ -170,7 +170,7 @@ TauMVADiscriminator::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
                        ++iMVAComputer)
    {
       string nameToGet = iMVAComputer->computerName;
-      iMVAComputer->computer->update<TauMVAFrameworkDBRcd>(iSetup, nameToGet.c_str());
+      iMVAComputer->computer->update<TauMVAFrameworkDBRcd>("TauMVASpecific", iSetup, nameToGet.c_str());
    } 
 
    DiscriminantHandleList                    otherDiscriminants;

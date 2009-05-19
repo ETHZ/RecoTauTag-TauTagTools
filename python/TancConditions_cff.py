@@ -3,6 +3,7 @@ from CondCore.DBCommon.CondDBCommon_cfi import *
 
 TauTagMVAComputerRecord = cms.ESSource("PoolDBESSource",
 	CondDBCommon,
+        appendToDataLabel = cms.string("TauMVASpecific"),
 	timetype = cms.string('runnumber'),
 	toGet = cms.VPSet(cms.PSet(
 		record = cms.string('BTauGenericMVAJetTagComputerRcd'),
@@ -12,5 +13,3 @@ TauTagMVAComputerRecord = cms.ESSource("PoolDBESSource",
         connect = cms.string('frontier://FrontierPrep/CMS_COND_BTAU'),
 	BlobStreamerName = cms.untracked.string('TBufferBlobStreamingService')
 )
-
-es_prefer_TauMVA = cms.ESPrefer("PoolDBESSource", "TauTagMVAComputerRecord")
