@@ -3,7 +3,7 @@ BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 Build signal ROOT files to support Tau neural classifier training
 
-$Id: BuildSignal_cfg.py,v 1.3.2.3 2009/03/24 21:26:43 friis Exp $ 
+$Id: BuildSignal_cfg.py,v 1.3.2.4 2009/04/30 12:36:02 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
@@ -61,7 +61,7 @@ process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService
 )
 
 #Z to tau tau hadronic only pythia source
-process.load("RecoTauTag/TauTagTools/ZtoTauHadronic_cfi")
+process.load("Configuration.Generator.ZTT_Tauola_All_hadronic_cfi")
 
 # Di tau pythia source
 #process.load("RecoTauTag/TauTagTools/DiTaus_cfi")
@@ -72,6 +72,8 @@ process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 #process.load("FastSimulation.Configuration.CommonInputs_cff")
 
 # Famos sequences
+process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                                    # Standard Tau sequences
+process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")                       # Standard Tau sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
 # Parametrized magnetic field (new mapping, 4.0 and 3.8T)
 #process.load("Configuration.StandardSequences.MagneticField_40T_cff")
@@ -94,26 +96,23 @@ process.famosSimHits.SimulateTracking = True
 # Simulation sequence
 process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 
-process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
 
-process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
-process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")                       # Standard Tau sequences
+#process.famosPFTauTaggingSequence = cms.Sequence(process.produceAndDiscriminateShrinkingConePFTaus)  # Only need shrinking cone
+
+process.main = cms.Sequence(process.genParticles*process.famosWithCaloTowersAndParticleFlow)
+
 #process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")                    # Uncomment to use InsideOut jets
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
 process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
-process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi")
 process.tauMVATrainerSignal.outputRootFileName="%s/output_%i_%i.root" % (rootFileOutputPath, batchNumber, jobNumber)
 
+print process.dumpPython()
 
 process.p1 = cms.Path(process.main*
-                      process.vertexreco*
-                      process.PFTau*
-#                      process.insideOutJets*
-#                      process.pfRecoTauTagInfoProducerInsideOut*
-#                      process.pfRecoTauProducerInsideOut*
-#                      process.pfTauDecayModeInsideOut*
+                      process.ic5PFJetTracksAssociatorAtVertex*
+                      process.pfRecoTauTagInfoProducer*
+                      process.produceAndDiscriminateShrinkingConePFTaus*
                       process.makeMC*
                       process.matchMCTaus*
                       process.tauMVATrainerSignal)

@@ -2,6 +2,7 @@ from ROOT import TLegend, TPaveText, TLine, gSystem, gDirectory, gROOT, TCanvas,
 
 import os
 import time
+import sys
 
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers    import *
@@ -94,8 +95,8 @@ for algo in algosToPlot:
    BackgroundRecoTreeEntries = BackgroundRecoTree.GetEntries()
 
    #Build basic entry lists (things in the kinematic window)
-   SignalRecoTree.Draw(">>KinematicWindowSignal", KinematicCut % { 'treeName' : "truth_Signal" }, "entrylist")
-   BackgroundRecoTree.Draw(">>KinematicWindowBackground", KinematicCut % { 'treeName' : "truth_Background" }, "entrylist")
+   SignalRecoTree.Draw(">>KinematicWindowSignal", KinematicCut % { 'treeName' : "truth_Signal" }, "entrylist", 1000000)
+   BackgroundRecoTree.Draw(">>KinematicWindowBackground", KinematicCut % { 'treeName' : "truth_Background" }, "entrylist", 1000000)
    SignalEntryList     = gDirectory.Get("KinematicWindowSignal")
    BackgroundEntryList = gDirectory.Get("KinematicWindowBackground")
 
@@ -163,8 +164,8 @@ for algo in algosToPlot:
       MVAEfficiencyCurves    = []
 
       #count entries that are acted on by the MVA
-      SignalMVAEntries     = 0
-      BackgroundMVAEntries = 0
+      TancDecayMode.TotalPreselectedSignalEntries     = 0
+      TancDecayMode.TotalPreselectedBackgroundEntries = 0
 
       ThrowAwayCutList = "(!__ISNULL__ && DecayMode >= 15)"  #always throw away greater than 3 prong
 
@@ -175,9 +176,6 @@ for algo in algosToPlot:
       TancDecayMode.TotalBackgroundEntries = TotalBackgroundEntries
       TancDecayMode.TotalSignalPrepass     = SignalPrePassCount
       TancDecayMode.TotalBackgroundPrepass = BackgroundPrePassCount
-      # these two static variables are updated each time we construct a new decay mode
-      TancDecayMode.TotalSignalMVAEntries     = 0
-      TancDecayMode.TotalBackgroundMVAEntries = 0
 
       for aComputer in mvaCollection:
          # The 'computer' is a cms.PSET, defined originally in 
@@ -211,8 +209,8 @@ for algo in algosToPlot:
 
          SignalEntries        = SignalRecoTree.Draw(SignalDrawString, DecayModeCuts, "goff")
          BackgroundEntries    = BackgroundRecoTree.Draw(BackgroundDrawString, DecayModeCuts, "goff")
-         SignalMVAEntries     += SignalEntries
-         BackgroundMVAEntries += BackgroundEntries
+         TancDecayMode.TotalPreselectedSignalEntries     += SignalEntries
+         TancDecayMode.TotalPreselectedBackgroundEntries += BackgroundEntries
          SignalHist           = gDirectory.Get("%s_%s" % (SignalMVATreeName, computerName))
          BackgroundHist       = gDirectory.Get("%s_%s" % (BackgroundMVATreeName, computerName))
 
@@ -254,13 +252,13 @@ for algo in algosToPlot:
       for aDecayMode in TaNCDecayModes:
          print aDecayMode.Name, aDecayMode.MinMaxTuple
 
-      SanityCheckSignal     = SignalNULLCount     + SignalPreFailCount     + SignalPrePassCount     + SignalThrownAway     + SignalMVAEntries
-      SanityCheckBackground = BackgroundNULLCount + BackgroundPreFailCount + BackgroundPrePassCount + BackgroundThrownAway + BackgroundMVAEntries
+      SanityCheckSignal     = SignalNULLCount     + SignalPreFailCount     + SignalPrePassCount     + SignalThrownAway     + TancDecayMode.TotalPreselectedSignalEntries
+      SanityCheckBackground = BackgroundNULLCount + BackgroundPreFailCount + BackgroundPrePassCount + BackgroundThrownAway + TancDecayMode.TotalPreselectedBackgroundEntries
       print SummaryFormatString % ("Total (check):", SanityCheckSignal, SanityCheckSignal*100.0/TotalSignalEntries, SanityCheckBackground, SanityCheckBackground*100.0/TotalBackgroundEntries)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes, 5000000)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  5000000)
       #OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  500000)
-      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  50000)
+      OpCurve = MakeOperatingPointCurveByMonteCarlo(TaNCDecayModes,  int(sys.argv[1]))
 
       print "Storing cut points for %s in %s..." % (mvaName, BenchmarkFilePath) 
       print ""
@@ -324,7 +322,7 @@ for algo in algosToPlot:
          NewStandardVsFakeRateCurve.SetLineColor(color)
          NewVeelPointsVsFakeRateCurve.SetLineColor(color)
 
-         CutCurveLegend.AddEntry(NewVeelkenVsEffCurve, "%10s-QCD:%0.2f%%-Sig:%0.2f%%" % (aDM.Name, aDM.GetBackgroundFraction()*100.0, aDM.GetSignalFraction()*100.0), "l")
+         CutCurveLegend.AddEntry(NewVeelkenVsEffCurve, "%20s-QCD:%0.2f%%-Sig:%0.2f%%" % (aDM.Name, aDM.GetBackgroundFractionOfPreselection()*100.0, aDM.GetSignalFractionOfPreselection()*100.0), "l")
          VeelkenVsEffCurves.append(NewVeelkenVsEffCurve)
          StandardVsEffCurves.append(NewStandardVsEffCurve)
          VeelkenVsFakeRateCurves.append(NewVeelkenVsFakeRateCurve)
@@ -352,7 +350,7 @@ for algo in algosToPlot:
       gPad.SetLogy(False)
       gPad.SetLogx(False)
       VeelkenVsEffCurves[0].Draw("AC")
-      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
+      VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.7, 1)
       VeelkenVsEffCurves[0].GetHistogram().SetTitle("Transormed cut values versus efficiency")
       VeelkenVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       VeelkenVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -364,7 +362,7 @@ for algo in algosToPlot:
       c1.Print("Plots/VeelkenVsEff_%s.pdf" % mvaName)
 
       StandardVsEffCurves[0].Draw("AC")
-      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
+      StandardVsEffCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.7, 1)
       StandardVsEffCurves[0].GetHistogram().SetTitle("Raw cut values versus efficiency")
       StandardVsEffCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       StandardVsEffCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -378,7 +376,8 @@ for algo in algosToPlot:
       gPad.SetLogy(False)
       gPad.SetLogx(True)
       VeelkenVsFakeRateCurves[0].Draw("AC")
-      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
+      VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.7, 1)
+      VeelkenVsFakeRateCurves[0].GetHistogram().SetBins(1, 0.0001, 0.015)
       VeelkenVsFakeRateCurves[0].GetHistogram().SetTitle("Transormed cut values versus fake rate")
       VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       VeelkenVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()
@@ -390,7 +389,8 @@ for algo in algosToPlot:
       c1.Print("Plots/VeelkenVsFakeRate_%s.pdf" % mvaName)
 
       StandardVsFakeRateCurves[0].Draw("AC")
-      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.4, 1)
+      StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetRangeUser(0.7, 1)
+      StandardVsFakeRateCurves[0].GetHistogram().SetBins(1, 0.0001, 0.015)
       StandardVsFakeRateCurves[0].GetHistogram().SetTitle("Raw cut values versus fake rate")
       StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().SetTitle("NNet cut")
       StandardVsFakeRateCurves[0].GetHistogram().GetYaxis().CenterTitle()

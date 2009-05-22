@@ -57,9 +57,11 @@ BackgroundChains['truth'] = TChain('truth')
 #Add the appropriate files in
 for name, chain in SignalChains.iteritems():
    chain.Add(SignalFileTestingGlob)
+   chain.Add(SignalFileTrainingGlob)
 
 for name, chain in BackgroundChains.iteritems():
    chain.Add(BackgroundFileTestingGlob)
+   chain.Add(BackgroundFileTrainingGlob)
 
 #Fix the chain names
 for name,chain in SignalChains.iteritems():

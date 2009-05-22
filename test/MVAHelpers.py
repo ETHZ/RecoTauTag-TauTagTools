@@ -30,8 +30,10 @@ class TancSet:
          self.EstimatedFakeRate   = (TancDecayMode.TotalBackgroundPrepass + sum([ x.BackgroundPassing(y) for x, y in zip(self.DecayModeList, cuts)]))*1.0/TancDecayMode.TotalBackgroundEntries
    def VeelkenTransform(self, theDM, cut):
       RescaledCut        = theDM.RescaleCut(cut)
-      SignalFraction     = theDM.GetSignalFraction()
-      BackgroundFraction = theDM.GetBackgroundFraction()
+      #SignalFraction     = theDM.GetSignalFraction()
+      #BackgroundFraction = theDM.GetBackgroundFraction()
+      SignalFraction     = theDM.GetSignalFractionOfPreselection()
+      BackgroundFraction = theDM.GetBackgroundFractionOfPreselection()
       if SignalFraction <= 0:
          return 0.0
       if BackgroundFraction <= 0:
@@ -58,6 +60,8 @@ class TancDecayMode:
    # Static members
    TotalSignalEntries     = 0
    TotalBackgroundEntries = 0
+   TotalPreselectedSignalEntries = 0
+   TotalPreselectedBackgroundEntries = 0
    TotalSignalPrepass     = 0
    TotalBackgroundPrepass = 0
    def __init__(self, Name, DecayModes, SignalMVAOut, BackgroundMVAOut):
@@ -89,6 +93,10 @@ class TancDecayMode:
       return self.NSignal*1.0/self.TotalSignalEntries
    def GetBackgroundFraction(self):
       return self.NBackground*1.0/self.TotalBackgroundEntries
+   def GetSignalFractionOfPreselection(self):
+      return self.NSignal*1.0/self.TotalPreselectedSignalEntries
+   def GetBackgroundFractionOfPreselection(self):
+      return self.NBackground*1.0/self.TotalPreselectedBackgroundEntries
    def GetDecayModeCutString(self):
       return BuildCutString(self.DecayModes)
    def RescaleCut(self, cut):
