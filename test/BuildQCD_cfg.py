@@ -81,6 +81,15 @@ process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService
 #
 process.load("Configuration.Generator.QCDForPF_cfi")
 
+# lower maximum cut
+process.source.processParameters = cms.vstring(
+      'MSEL=1                ! QCD hight pT processes', 
+      'CKIN(3)=15.           ! minimum pt hat for hard interactions', 
+      'CKIN(4)=300.         ! maximum pt hat for hard interactions',
+      'MSTP(142)=2           ! Turns on the PYWEVT Pt reweighting routine' 
+      )
+
+
 process.load("FastSimulation.Configuration.CommonInputsFake_cff")
 # Common inputs
 #process.load("FastSimulation.Configuration.CommonInputs_cff")
