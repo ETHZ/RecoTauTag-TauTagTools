@@ -89,11 +89,22 @@ def MakeOperatingPointCurveByMonteCarlo(TancDecayModeList, MonteCarloIterations,
 
    TancSet.DecayModeList = TancDecayModeList
    OutputCurve = TancOperatingCurve()
-   print "Doing %i Monte Carlo iterations on operating points" % MonteCarloIterations
+   Done = False
+   ConvergenceLevel = 0
+   PointsAddedAtLastIteration = 0
+   ConvergenceTarget = 0.005 
+   print "Roughing out curve..."
    LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, RandomCuts)
-   print "Filling out middle."
-   LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundCurve)
-   print "Filling out low end."
-   LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundLowEnd)
+   while not Done:
+      PointsAddedAtLastIteration = OutputCurve.PointsAdded
+      print "Filling out middle."
+      LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundCurve)
+      print "Filling out low end."
+      LoopAndAddNewCuts(MonteCarloIterations, OutputCurve, CutsAroundLowEnd)
+      ConvergenceLevel = (OutputCurve.PointsAdded-PointsAddedAtLastIteration)*1.0/OutputCurve.PointsAdded
+      print "Convergence level: %f Target: %f" % (ConvergenceLevel, ConvergenceTarget)
+      if ConvergenceTarget > ConvergenceLevel:
+         Done = True
+   print "Done"
    return OutputCurve
 

@@ -8,10 +8,10 @@ export SCRAM_ARCH='slc4_ia32_gcc345'
 export VO_CMS_SW_DIR='/raid1/cmssw'
 source $VO_CMS_SW_DIR/cmsset_default.sh
 
-if [ ! -n "$5" ]
+if [ ! -n "$3" ]
 then
   echo "Produce background (QCD 2->2) MVA training data for the Tau MVA framework - the CMS job as specified in BuildQCD.py"
-  echo "Usage: `basename $0` JobNumber BatchNumber MaxEvents MinPtHat MaxPtHat "
+  echo "Usage: `basename $0` JobNumber BatchNumber MaxEvents "
   exit 65
 fi  
 
@@ -36,7 +36,7 @@ then
    rm $DATALOCATION/$FILENAME
 fi
 
-cat BuildQCD_cfg.py | sed "s|RPL_BATCH|${1}|" | sed "s|RPL_RUN|${2}|" | sed "s|RPL_EVENTS|${3}|" | sed "s|RPL_MINPT|${4}|" | sed "s|RPL_MAXPT|${5}|" > $DATALOCATION/run_${1}_${2}.py
+cat BuildQCD_cfg.py | sed "s|RPL_BATCH|${1}|" | sed "s|RPL_RUN|${2}|" | sed "s|RPL_EVENTS|${3}|"  > $DATALOCATION/run_${1}_${2}.py
 
 cd $DATALOCATION
 

@@ -3,7 +3,7 @@ BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 Build signal ROOT files to support Tau neural classifier training
 
-$Id: BuildSignal_cfg.py,v 1.9 2009/03/04 00:35:36 friis Exp $ 
+$Id: BuildSignal_cfg.py,v 1.10.2.1 2009/05/26 15:32:36 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
@@ -41,27 +41,15 @@ print "Seed is %i" % baseSeed
 
 process.maxEvents = cms.untracked.PSet ( input = cms.untracked.int32(nEvents) )
 
-process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
-    # This is to initialize the random engines of Famos
-    moduleSeeds = cms.PSet(
-        l1ParamMuons = cms.untracked.uint32(baseSeed+54525),
-        caloRecHits = cms.untracked.uint32(baseSeed+654321),
-        MuonSimHits = cms.untracked.uint32(baseSeed+97531),
-        muonCSCDigis = cms.untracked.uint32(baseSeed+525432),
-        muonDTDigis = cms.untracked.uint32(baseSeed+67673876),
-        famosSimHits = cms.untracked.uint32(baseSeed+13579),
-        paramMuons = cms.untracked.uint32(baseSeed+54525),
-        famosPileUp = cms.untracked.uint32(baseSeed+918273),
-        VtxSmeared = cms.untracked.uint32(baseSeed+123456789),
-        muonRPCDigis = cms.untracked.uint32(baseSeed+524964),
-        siTrackerGaussianSmearingRecHits = cms.untracked.uint32(baseSeed+24680)
-    ),
-    # This is to initialize the random engine of the source
-    sourceSeed = cms.untracked.uint32(baseSeed+123456789)
-)
-
 #Z to tau tau hadronic only pythia source
-process.load("RecoTauTag/TauTagTools/ZtoTauHadronic_cfi")
+process.load("Configuration.Generator.ZTT_Tauola_All_hadronic_cfi")
+
+
+#Random number gen
+process.load("FastSimulation.Configuration.RandomServiceInitialization_cff")
+newSeed = process.RandomNumberGeneratorService.theSource.initialSeed.value() + baseSeed
+process.RandomNumberGeneratorService.theSource.initialSeed = cms.untracked.uint32(newSeed)
+process.RandomNumberGeneratorService.generator.initialSeed = cms.untracked.uint32(newSeed)
 
 # Di tau pythia source
 #process.load("RecoTauTag/TauTagTools/DiTaus_cfi")
@@ -72,6 +60,7 @@ process.load("RecoTauTag/TauTagTools/ZtoTauHadronic_cfi")
 process.load("FastSimulation.Configuration.CommonInputs_cff")
 
 # Famos sequences
+process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                                    # Standard Tau sequences
 process.load("FastSimulation.Configuration.FamosSequences_cff")
 # Parametrized magnetic field (new mapping, 4.0 and 3.8T)
 #process.load("Configuration.StandardSequences.MagneticField_40T_cff")
@@ -94,26 +83,18 @@ process.famosSimHits.SimulateTracking = True
 # Simulation sequence
 process.load("PhysicsTools.HepMCCandAlgos.genParticles_cfi")
 
-process.main = cms.Sequence(process.genParticles*process.famosWithParticleFlow)
-
-process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")                       # Standard Tau sequences
-process.load("RecoTauTag.Configuration.RecoTauTag_FakeConditions_cff")                       # Standard Tau sequences
-#process.load("RecoTauTag.RecoTau.InsideOutJetProducer_cfi")                    # Uncomment to use InsideOut jets
-process.load("RecoTauTag.RecoTau.PFRecoTauDecayModeDeterminator_cfi")          # Reconstructs decay mode and associates (via AssociationVector) to PFTaus
+process.main = cms.Sequence(process.ProductionFilterSequence*process.genParticles*process.famosWithElectrons*process.famosWithCaloTowersAndParticleFlow)
 process.load("RecoTauTag.TauTagTools.TruthTauDecayModeProducer_cfi")            # Builds PFTauDecayMode objects from visible taus/gen jets
 process.load("RecoTauTag.TauTagTools.TauRecoTruthMatchers_cfi")                 # Matches RECO PFTaus to truth PFTauDecayModes
 process.load("RecoTauTag.TauTagTools.TauMVATrainer_cfi")                        # Builds MVA training input root trees from matching
-process.load("RecoTauTag.TauTagTools.TauMVADiscriminator_cfi")
 process.tauMVATrainerSignal.outputRootFileName="%s/output_%i_%i.root" % (rootFileOutputPath, batchNumber, jobNumber)
 
+print process.dumpPython()
 
 process.p1 = cms.Path(process.main*
-                      process.vertexreco*
-                      process.PFTau*
-#                      process.insideOutJets*
-#                      process.pfRecoTauTagInfoProducerInsideOut*
-#                      process.pfRecoTauProducerInsideOut*
-#                      process.pfTauDecayModeInsideOut*
+                      process.ic5PFJetTracksAssociatorAtVertex*
+                      process.pfRecoTauTagInfoProducer*
+                      process.produceAndDiscriminateShrinkingConePFTaus*
                       process.makeMC*
                       process.matchMCTaus*
                       process.tauMVATrainerSignal)
