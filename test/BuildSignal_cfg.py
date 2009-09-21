@@ -3,7 +3,7 @@ BuildSignal_cfg.py
 Author: Evan K. Friis, UC Davis; evan.friis@cern.ch
 Build signal ROOT files to support Tau neural classifier training
 
-$Id: BuildSignal_cfg.py,v 1.3.2.4 2009/04/30 12:36:02 friis Exp $ 
+$Id: BuildSignal_cfg.py,v 1.11 2009/05/27 09:42:38 friis Exp $ 
 
 Sequence:
    Pythia Z->tautau (both taus decay hadronically) events
