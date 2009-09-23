@@ -52,12 +52,12 @@ class Discriminant {
       PhysicsTools::AtomicId            theAtomicId()  const {return discriminantName_;}
       string                            rootTypeName() const {return rootTypeName_;}
 
-      /// add a branch to a ttree corresponding to this variable
+      /// Add a branch to a TTREE corresponding to this variable.
       virtual void       branchTree(TTree* theTree) = 0; 
       virtual void       fillMVA(std::vector<PhysicsTools::Variable::Value>& mvaHolder) const = 0;
 
    protected:
-      /// determines whether or not to use simple struct like branching or custom class branching (e.g. TLorentzVector)
+      /// Determines whether or not to use simple struct like branching or custom class branching (e.g. TLorentzVector)
       bool               branchSimply() const { return branchAsSimpleDataType_; }
 
    private:
@@ -77,13 +77,13 @@ class DiscriminantBase : public Discriminant {
       virtual  ~DiscriminantBase(){};
       typedef typename std::vector<T>::const_iterator myVectorIterator;
       
-      virtual void setNullResult(PFTauDiscriminantManager *input) //can be overriden in the derived classes if desired (for example, to use edm::Event info)
+      virtual void setNullResult(PFTauDiscriminantManager *input) // Can be overridden in the derived classes if desired (for example, to use edm::Event info)
       {
          result_.clear();
          singleResult_ = defaultValue_;
       }
 
-      /// computes the associated quanity for the tau object that is loaded in the PFTauDiscriminantManager
+      /// computes the associated quantity for the tau object that is loaded in the PFTauDiscriminantManager
       /// implemented in derived implementation class
       void compute(PFTauDiscriminantManager* input)
       {
@@ -95,7 +95,7 @@ class DiscriminantBase : public Discriminant {
             edm::LogError("DiscriminantBase") << "Error in DiscriminantBase - trying to compute discriminants on null PFTauDecayMode pointer!";
 
          size_t numberOfResultsReturned = result_.size();
-         if(!numberOfResultsReturned) //if there are no results, ROOT branches of simple variables must be filled w/ the default value
+         if(!numberOfResultsReturned) // If there are no results, ROOT branches of simple variables must be filled with the default value
          {
             singleResult_ = defaultValue_;
          } else
@@ -119,7 +119,7 @@ class DiscriminantBase : public Discriminant {
          {
             edm::LogInfo("PFTauDiscriminantBase") << "Branching TTree: " << theTree->GetName() << " with struct style branch (leaflist)";
             stringstream branchType;
-            branchType << name() << "/" << rootTypeName(); //eg D, F, I, etc
+            branchType << name() << "/" << rootTypeName(); //eg D, F, I, etc.
             theTree->Branch(this->name().c_str(), &singleResult_, branchType.str().c_str());
          }
       }
