@@ -3,19 +3,20 @@
  * \created : Mon Sep 21 17:46:35 PDT 2009 
  * \author Evan K. Friis, (UC Davis)
  *
- * \version $Revision: 1.1 $
+ * \version $Revision: 1.1.2.1 $
  *
  * Implements PFTauEfficiencyAssociator to produce a mapping of efficiencies
  * (parameterizied by pt, eta, and jet widht) stored in a ROOT TH3 histograms
  * to reco::PFTaus
  *
- * $Id: PFTauEfficiencyAssociatorFromTH3.h,v 1.1 2009/06/11 07:23:29 friis Exp$
+ * $Id: PFTauEfficiencyAssociatorFromTH3.cc,v 1.1.2.1 2009/09/23 03:41:47 friis Exp $
  *
  */
 
 #include "RecoTauTag/TauTagTools/interface/PFTauEfficiencyAssociator.h"
 #include "TH3F.h"
 #include "TFile.h"
+#include <memory>
 
 class PFTauEfficiencyAssociatorFromTH3 : public PFTauEfficiencyAssociator {
    public:
@@ -34,7 +35,7 @@ class PFTauEfficiencyAssociatorFromTH3 : public PFTauEfficiencyAssociator {
      struct Histogram {
         std::string name;
         std::string location;           // location (in root file/database) of TH3
-        const TH3F * histogram;         // pointer to TH3
+        TH3F* histogram;  
         const double* xAxis;            // pointers to internal kinematic quantities (pt, eta, ..)
         const double* yAxis;
         const double* zAxis;
@@ -68,6 +69,9 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
 
    std::string filename = effSources.getParameter<std::string>("filename");
 
+   // keep the previous gDirectory state
+   TDirectory* old_dir = gDirectory;
+
    file_ = TFile::Open(filename.c_str(), "READ");
    if(!file_)
    {
@@ -76,16 +80,22 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
 
    for(vstring::const_iterator iSource = effNames.begin(); iSource != effNames.end(); ++iSource)
    {
-      // build the contianer used to hold this efficiency source
-      Histogram container;
-      container.name = *iSource;
-
       // get the associated pset
       const ParameterSet& sourcePSet = effSources.getParameter<ParameterSet>(*iSource);
 
-      container.location = sourcePSet.getParameter<std::string>("location");
+      // build the contianer used to hold this efficiency source
+      std::string name = *iSource;
+      std::string loc = sourcePSet.getParameter<std::string>("location");
 
-      container.histogram = dynamic_cast<TH3F*>(file_->Get(container.location.c_str()));
+      // build our histogram object
+      Histogram container;
+      container.histogram = dynamic_cast<TH3F*>(file_->Get(loc.c_str()));
+      container.name = name;
+      container.location = loc;
+
+      // set the user as the object owner (to prevent deletion when the file is closed)
+      container.histogram->SetDirectory(0);
+
       if( !container.histogram )
       {
          throw cms::Exception("InputFileError") << "can't retieve histogram " << container.name << " from location: " << container.location;
@@ -97,7 +107,6 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
       const ParameterSet& zAxis = sourcePSet.getParameter<ParameterSet>("zAxis");
 
       // associate axis to correct kinematic variables
-
       container.xAxis = translateNameToKineVarPtr(xAxis.getParameter<std::string>("varName"), vars);
       container.yAxis = translateNameToKineVarPtr(yAxis.getParameter<std::string>("varName"), vars);
       container.zAxis = translateNameToKineVarPtr(zAxis.getParameter<std::string>("varName"), vars);
@@ -105,6 +114,10 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
       // store this efficiency source
       efficiencies_.push_back(container);
    }
+
+   // Restore the previous directory state.
+   file_->Close();
+   old_dir->cd();
 }
 
 pat::LookupTableRecord
@@ -118,7 +131,7 @@ PFTauEfficiencyAssociatorFromTH3::getEfficiency(size_t iEff)
    //   const_cast - for some reason TH1::FindBin is not const???
    //   (this->*(effSource.xAxis)) effSource.xAxis is a pointer to the either pt, eta, or width() member fuctions of this producer
    //   and returns the value of the of the current tau for the variable associated to the xAxis
-   Int_t globalBin = const_cast<TH3F*>(effSource.histogram)->FindBin( *(effSource.xAxis), *(effSource.yAxis), *(effSource.zAxis) );
+   Int_t globalBin = effSource.histogram->FindBin( *(effSource.xAxis), *(effSource.yAxis), *(effSource.zAxis));
 
    double efficiency = effSource.histogram->GetBinContent(globalBin);
    double error = effSource.histogram->GetBinError(globalBin);
