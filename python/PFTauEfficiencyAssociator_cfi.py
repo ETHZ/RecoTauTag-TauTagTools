@@ -46,35 +46,36 @@ standardAxesDefinition = cms.PSet(
       zAxis = standardJetWidthAxis
 )
 
+fakerate_qcd_file = "/afs/cern.ch/user/f/friis/public/TauPeformance_QCD_BCtoMu.root"
+ztt_eff_file      = "/afs/cern.ch/user/f/friis/public/ztt_efficiencies.root"
+
+def make_histogram_conf(file_loc, histo_loc, axis_def=standardAxesDefinition):
+   '''  Helper function to generate histogram fake rate configuration PSets 
+
+   axix_def : Specify variable (pt/eta/width) <-> (x,y,z) mapping
+   file_loc : Path to ROOT file containing histogram
+   histo_loc : Path to histogram *inside* given root file
+   '''
+   return cms.PSet(axis_def, filename = cms.string(file_loc), location = cms.string(histo_loc))
+
 shrinkingConeEfficienciesProducerFromFile = cms.EDProducer("PFTauEfficiencyAssociatorFromTH3",
       PFTauProducer = cms.InputTag("shrinkingConePFTauProducer"),
       efficiencySources = cms.PSet(
-         filename = cms.string("/afs/cern.ch/user/f/friis/public/TauPeformance_QCD_BCtoMu.root"),
-         # each efficiency source needs to be defined as a separate PSet
-         QCDFakeRateTrkIsolation = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/TrkIso_efficiency"),
-         ),
-         QCDFakeRateECALIsolation = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/EcalIso_efficiency"),
-         ),
-         QCDFakeRateTancFrOnePercent = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/TaNCOnePercent_efficiency"),
-         ),
-         QCDFakeRateTancFrHalfPercent = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/TaNCHalfPercent_efficiency"),
-         ),
-         QCDFakeRateTancFrQuarterPercent = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/TaNCQuarterPercent_efficiency"),
-         ),
-         QCDFakeRateTancFrTenthPercent = cms.PSet(
-            standardAxesDefinition,
-            location = cms.string("makeFakeRateHistograms/TaNCTenthPercent_efficiency"),
-         ),
+         # Fake rates as measured from simulated QCD_BCtoMu
+         frByIsolationMuEnrichedQCDsim            = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/TrkIso_efficiency"),
+         frByECALIsolationMuEnrichedQCDsim        = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/EcalIso_efficiency"),
+         frByTancFrOnePercentMuEnrichedQCDsim     = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/TaNCOnePercent_efficiency"),
+         frByTancFrHalfPercentMuEnrichedQCDsim    = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/TaNCHalfPercent_efficiency"),
+         frByTancFrQuarterPercentMuEnrichedQCDsim = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/TaNCQuarterPercent_efficiency"),
+         frByTancFrTenthPercentMuEnrichedQCDsim   = make_histogram_conf(fakerate_qcd_file, "makeFakeRateHistograms/TaNCTenthPercent_efficiency"),
+
+         # Signal efficiency as measured from simulated Z->tautau events.
+         effByIsolationZtautausim            = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/TrkIso_efficiency"),
+         effByECALIsolationZtautausim        = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/EcalIso_efficiency"),
+         effByTancFrOnePercentZtautausim     = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/TaNCOnePercent_efficiency"),
+         effByTancFrHalfPercentZtautausim    = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/TaNCHalfPercent_efficiency"),
+         effByTancFrQuarterPercentZtautausim = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/TaNCQuarterPercent_efficiency"),
+         effByTancFrTenthPercentZtautausim   = make_histogram_conf(ztt_eff_file, "makeFakeRateHistograms/TaNCTenthPercent_efficiency"),
       )
 )
 

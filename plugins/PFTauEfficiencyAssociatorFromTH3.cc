@@ -3,27 +3,26 @@
  * \created : Mon Sep 21 17:46:35 PDT 2009 
  * \author Evan K. Friis, (UC Davis)
  *
- * \version $Revision: 1.1.2.1 $
+ * \version $Revision: 1.1.2.2 $
  *
  * Implements PFTauEfficiencyAssociator to produce a mapping of efficiencies
  * (parameterizied by pt, eta, and jet widht) stored in a ROOT TH3 histograms
  * to reco::PFTaus
  *
- * $Id: PFTauEfficiencyAssociatorFromTH3.cc,v 1.1.2.1 2009/09/23 03:41:47 friis Exp $
+ * $Id: PFTauEfficiencyAssociatorFromTH3.cc,v 1.1.2.2 2009/10/09 00:00:52 friis Exp $
  *
  */
 
 #include "RecoTauTag/TauTagTools/interface/PFTauEfficiencyAssociator.h"
 #include "TH3F.h"
 #include "TFile.h"
-#include <memory>
 
 class PFTauEfficiencyAssociatorFromTH3 : public PFTauEfficiencyAssociator {
    public:
 
      explicit PFTauEfficiencyAssociatorFromTH3(const ParameterSet& pset):PFTauEfficiencyAssociator(pset){};
 
-     ~PFTauEfficiencyAssociatorFromTH3(){}
+     ~PFTauEfficiencyAssociatorFromTH3();
 
      /// get the efficiency for the current tau for source iEff
      virtual pat::LookupTableRecord getEfficiency(size_t iEff);
@@ -46,6 +45,15 @@ class PFTauEfficiencyAssociatorFromTH3 : public PFTauEfficiencyAssociator {
      TFile* file_;
 };
 
+// Upon destruction release all the histograms that have been loaded.
+PFTauEfficiencyAssociatorFromTH3::~PFTauEfficiencyAssociatorFromTH3()
+{
+   for(std::vector<Histogram>::iterator histo  = efficiencies_.begin(); 
+                                        histo != efficiencies_.end(); ++histo)
+   {
+      delete histo->histogram;
+   }
+}
 
 const double *
 translateNameToKineVarPtr(const std::string& varName, const PFTauEfficiencyAssociator::KineVarPtrs& vars)
@@ -67,21 +75,23 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
    typedef std::vector<std::string> vstring;
    const vstring& effNames = efficiencySourceNames();
 
-   std::string filename = effSources.getParameter<std::string>("filename");
-
-   // keep the previous gDirectory state
-   TDirectory* old_dir = gDirectory;
-
-   file_ = TFile::Open(filename.c_str(), "READ");
-   if(!file_)
-   {
-      throw cms::Exception("PFTauEfficiencyAssociatorFromFile") << "Can't open ROOT file: " << filename;
-   }
-
    for(vstring::const_iterator iSource = effNames.begin(); iSource != effNames.end(); ++iSource)
    {
       // get the associated pset
       const ParameterSet& sourcePSet = effSources.getParameter<ParameterSet>(*iSource);
+
+      // Get the associated filename.  This is a bit redundant, and will open and close the 
+      // same file multiple times, but it is only done on startup.  (And this is temporary anyway)
+      std::string filename = sourcePSet.getParameter<std::string>("filename");
+
+      // keep the previous gDirectory state
+      TDirectory* old_dir = gDirectory;
+
+      file_ = TFile::Open(filename.c_str(), "READ");
+      if(!file_)
+      {
+         throw cms::Exception("PFTauEfficiencyAssociatorFromFile") << "Can't open ROOT file: " << filename;
+      }
 
       // build the contianer used to hold this efficiency source
       std::string name = *iSource;
@@ -113,11 +123,10 @@ PFTauEfficiencyAssociatorFromTH3::setupEfficiencySources(const ParameterSet& eff
 
       // store this efficiency source
       efficiencies_.push_back(container);
+      // Restore the previous directory state.
+      file_->Close();
+      old_dir->cd();
    }
-
-   // Restore the previous directory state.
-   file_->Close();
-   old_dir->cd();
 }
 
 pat::LookupTableRecord
