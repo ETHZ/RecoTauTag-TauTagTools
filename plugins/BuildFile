@@ -15,6 +15,5 @@
   <use name=PhysicsTools/HepMCCandAlgos>
   <use name=RecoTauTag/RecoTau>
   <use name=RecoTauTag/TauTagTools>
-  <use name=RecoTauTag/RecoTau>
 </library>
 
