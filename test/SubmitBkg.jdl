@@ -1,8 +1,49 @@
 universe = vanilla
-Executable = RunBkgJob.sh
+Executable = BuildQCD_cfg.py
 should_transfer_files = NO
-Output = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).stdout
-Error  = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).stderr
-Log    = /home/friis/data/TauClass/QCD/condor/batch_$(cluster)_$(process).condor
-Arguments = $(cluster) $(process) RPL_EVENTS  RPL_MINPT RPL_MAXPT
-Queue RPL_JOBS
+getenv = true
+Output = qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).out
+Error  = qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).err
+Log    = qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt20to30
+Queue 100
+
+universe = vanilla
+Executable = BuildQCD_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).out
+Error  = qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).err
+Log    = qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt30to50
+Queue 71
+
+universe = vanilla
+Executable = BuildQCD_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).out
+Error  = qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).err
+Log    = qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt50to80
+Queue 11
+
+universe = vanilla
+Executable = BuildQCD_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).out
+Error  = qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).err
+Log    = qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt80to120
+Queue 45
+
+universe = vanilla
+Executable = BuildQCD_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).out
+Error  = qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).err
+Log    = qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt120to170
+Queue 5

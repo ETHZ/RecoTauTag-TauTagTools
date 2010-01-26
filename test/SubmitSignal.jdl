@@ -1,8 +1,9 @@
 universe = vanilla
-Executable = RunSignalJob.sh
+Executable = BuildSignal_cfg.py
 should_transfer_files = NO
-Output = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).stdout
-Error  = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).stderr
-Log    = /home/friis/data/TauClass/ZTT/condor/batch_$(cluster)_$(process).condor
-Arguments = $(cluster) $(process) RPL_EVENTS 
-Queue RPL_JOBS
+getenv = true
+Output = ztt/ztt_$(cluster)_$(process).out
+Error  = ztt/ztt_$(cluster)_$(process).err
+Log    = ztt/ztt_$(cluster)_$(process).condor
+Arguments = job=$(process) maxEvents=-1
+Queue 111

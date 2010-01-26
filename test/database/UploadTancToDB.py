@@ -1,13 +1,30 @@
+#!/usr/bin/env cmsRun
+'''
+Copy TaNC training files into a local SQLite file
+Adapted from PhysicsTools/MVATrainer/test/testWriteMVAComputerCondDB_cfg.py
+Original author: Christopher Saout
+Modifications by Evan Friis
+'''
+
 import FWCore.ParameterSet.Config as cms
 import RecoTauTag.TauTagTools.TauMVAConfigurations_cfi
 import os
+from RecoTauTag.TauTagTools.MVASteering_cfi import myTauAlgorithms, GetTrainingFile
+import FWCore.ParameterSet.VarParsing as VarParsing
 
-from RecoTauTag.TauTagTools.MVASteering_cfi import *
+options = VarParsing.VarParsing ('standard')
+options.register ('tag',
+                  'TauNeuralClassifier', # default value
+                  VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+                  VarParsing.VarParsing.varType.string,          # string, int, or float
+                  "Name of tag to add")
+options.register ('db',
+                  'sqlite_file:TancLocal.db', # default value
+                  VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+                  VarParsing.VarParsing.varType.string,          # string, int, or float
+                  "Local database to connect to")
 
-# Copy TaNC training files into a local SQLite file
-# Adapted from PhysicsTools/MVATrainer/test/testWriteMVAComputerCondDB_cfg.py
-# Original author: Christopher Saout
-# Modifications by Evan Friis
+options.parseArguments()
 
 # Make sure we are only dealing w/ one algorithm...
 if len(myTauAlgorithms) > 1:
@@ -15,8 +32,8 @@ if len(myTauAlgorithms) > 1:
          Please modify it so that it only includeds the algorithm on which the TaNC is to be used."
 
 algorithm = myTauAlgorithms[0]
-myconnect   = cms.string('sqlite_file:TancLocal.db')  #or frontier, etc
-mytag       = cms.string('TauNeuralClassifier')
+myconnect   = cms.string(options.db)  #or frontier, etc
+mytag       = cms.string(options.tag)
 mytimetype  = cms.untracked.string('runnumber')
 print ""
 print "***************************************************"

@@ -1,0 +1,59 @@
+universe = vanilla
+Executable = EvaluateSignal_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/ztt/ztt_$(cluster)_$(process).out
+Error  = evaluate/ztt/ztt_$(cluster)_$(process).err
+Log    = evaluate/ztt/ztt_$(cluster)_$(process).condor
+Arguments = job=$(process) tags=TaNCV0
+Queue 45
+
+universe = vanilla
+Executable = EvaluateBkg_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).out
+Error  = evaluate/qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).err
+Log    = evaluate/qcd/QCDDiJet_Pt20to30_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt20to30 tags=TaNCV0
+Queue 40
+
+universe = vanilla
+Executable = EvaluateBkg_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).out
+Error  = evaluate/qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).err
+Log    = evaluate/qcd/QCDDiJet_Pt30to50_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt30to50 tags=TaNCV0
+Queue 29
+
+universe = vanilla
+Executable = EvaluateBkg_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).out
+Error  = evaluate/qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).err
+Log    = evaluate/qcd/QCDDiJet_Pt50to80_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt50to80 tags=TaNCV0
+Queue 5
+
+universe = vanilla
+Executable = EvaluateBkg_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).out
+Error  = evaluate/qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).err
+Log    = evaluate/qcd/QCDDiJet_Pt80to120_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt80to120 tags=TaNCV0
+Queue 18
+
+universe = vanilla
+Executable = EvaluateBkg_cfg.py
+should_transfer_files = NO
+getenv = true
+Output = evaluate/qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).out
+Error  = evaluate/qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).err
+Log    = evaluate/qcd/QCDDiJet_Pt120to170_$(cluster)_$(process).condor
+Arguments = job=$(process) sample=QCDDiJet_Pt120to170 tags=TaNCV0
+Queue 2

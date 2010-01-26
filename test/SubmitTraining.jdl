@@ -1,6 +1,7 @@
 universe = vanilla
 Executable = DoTraining.sh
 should_transfer_files = NO
+getenv = true
 Output = /tmp/MVATraining_$(cluster)_$(process).stdout
 Error  = /tmp/MVATraining_$(cluster)_$(process).stderr
 Log    = /tmp/MVATraining_$(cluster)_$(process).condor

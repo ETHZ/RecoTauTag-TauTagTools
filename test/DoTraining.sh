@@ -5,15 +5,9 @@
 # to train.  Optionally takes a second argument as a filter agains the different training directories 
 # Author: Evan Friis, UC Davis (friis@physics.ucdavis.edu)
 
-# Edit for your local machine setup....
-export SCRAM_ARCH='slc4_ia32_gcc345'
-export VO_CMS_SW_DIR='/raid1/cmssw'
-source $VO_CMS_SW_DIR/cmsset_default.sh
-
 DirectoriesToChange=`ls -d TrainDir_*$2*/`
 counter=0
 
-echo "fuck"
 echo $counter
 
 for toTrain in $DirectoriesToChange

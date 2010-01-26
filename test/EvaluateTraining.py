@@ -16,16 +16,17 @@ are again taken from MVASteering.py.
 """
 
 import os
-import sys
 from array import array
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
 
 #PyRoot madness to get the MVA support classes
 import PyCintex
-from ROOT import gROOT, gSystem, TFile, TChain, gDirectory, TTree
+from ROOT import gSystem, TFile, TChain, TTree
 gSystem.Load("libPhysicsToolsMVAComputer")
 gSystem.Load("libPhysicsToolsMVATrainer")
+gSystem.Load("pluginPhysicsToolsMVATrainerProcTMVA")
+gSystem.Load("pluginPhysicsToolsMVAComputerProcTMVA")
 PyCintex.Cintex.Enable()
 # Get the namespace 
 PhysicsTools = PyCintex.Namespace("PhysicsTools")

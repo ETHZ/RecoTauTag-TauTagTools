@@ -29,6 +29,8 @@ import FWCore.ParameterSet.Config as cms
 from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers  import *
 
+from array import array
+
 #sys.stdout = open("TancPrepare.log","w")
 #sys.stderr = open("TancPrepare.err","w")
 
@@ -131,6 +133,8 @@ for aTauAlgorithm in myTauAlgorithms:
          #FIXME TaNC label is hardcoded here now, need to get the MVA collection name???
          SignalWeightHisto     = WeightsFile.Get("SignalWeightPtVsEta_%s_TaNC_%s" % (aTauAlgorithm, WeightHistoLabel))
          BackgroundWeightHisto = WeightsFile.Get("BackgroundWeightPtVsEta_%s_TaNC_%s" % (aTauAlgorithm, WeightHistoLabel))
+
+         print SignalWeightHisto, BackgroundWeightHisto
 
          try:
             SignalWeightHisto.GetNbinsX()

@@ -10,12 +10,10 @@ neural net type.
 
 """
 
-import os
-import sys
 # Get the list of MVAs to configure and tau algorithms to use from MVASteering.py
-from MVASteering import *
+from RecoTauTag.TauTagTools.MVASteering_cfi import *
 from MVAHelpers import *
-from ROOT import TFile, TChain, TH2F, gDirectory, TGraph, gPad, gROOT, Double, EColor, TCanvas, gStyle
+from ROOT import TFile, TChain, TH2F, gDirectory, gPad, gROOT, Double, EColor, TCanvas, gStyle
 
 from array import array
 
@@ -223,7 +221,7 @@ for name in myTauAlgorithms:
 
          DecayModeCut = BuildCutString(decayModes)
 
-         SignalHisto, BackgroundHisto, WeightHisto = DecayModeMap[computerName]
+         SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackroundWeightHisto = DecayModeMap[computerName]
 
          xValue = Double(0)
          yValue = Double(0)
@@ -324,7 +322,7 @@ for name in myTauAlgorithms:
          WeightHisto.GetYaxis().SetTitle("Eta")
          WeightHisto.SetTitle("Weighting Histogram")
 
-         TestCanvas.SaveAs("%s_%s.pdf" % (mvaCollectionName, computerName))
+         TestCanvas.SaveAs("%s_%s.png" % (mvaCollectionName, computerName))
 
          del SignalTestHisto
          del BackgroundTestHisto
@@ -337,7 +335,9 @@ for name in myTauAlgorithms:
          print summaryString % (name, mvaCollectionName, computerName, SignalSubEntries, BackgroundSubEntries, WeightSum)
 
       # write our histograms
-      for DecayMode, (SignalHisto, BackgroundHisto, WeightHisto) in DecayModeMap.iteritems():
+      for DecayMode, (SignalHisto, BackgroundHisto, WeightHisto, SignalWeightHisto, BackgroundWeightHisto) in DecayModeMap.iteritems():
          SignalHisto.Write()
          BackgroundHisto.Write()
+         SignalWeightHisto.Write()
+         BackgroundWeightHisto.Write()
          WeightHisto.Write()
