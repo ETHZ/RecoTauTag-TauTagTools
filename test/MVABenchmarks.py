@@ -26,7 +26,8 @@ mvasToPlot  = ["TaNC", ]#"MultiNetIso", ]
 # PrepareForTraining.py script
 
 # Define cuts on the signal objects
-KinematicCut = "%(treeName)s.Pt > 20 && %(treeName)s.Pt < 50"  #%s refers to tree name substituton
+#KinematicCut = "%(treeName)s.Pt > 20 && %(treeName)s.Pt < 50"  #%s refers to tree name substituton
+KinematicCut = ""  #%s refers to tree name substituton
 
 # Define fake rate benchmark points
 FakeRateBenchmarks = [ (0.01, 'OnePercent'),

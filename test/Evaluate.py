@@ -6,7 +6,7 @@ Using a local sqlite database w/ TaNC training, build a TauNtuple
 containing TaNC evaluation data. This file is not complete - it only 
 serves as a prototype for the specific signal/bkg cases
 
-$Id: $ 
+$Id: Evaluate.py,v 1.1 2010/01/26 21:21:24 friis Exp $ 
 
 '''
 
@@ -62,9 +62,7 @@ from RecoTauTag.TauTagTools.TancConditions_cff import TauTagMVAComputerRecord
 from RecoTauTag.TauTagTools.TauMVADiscriminator_cfi import shrinkingConePFTauDiscriminationByTaNC
 
 # Start to prepare our Ntuple defintions
-from RecoTauTag.TauAnalysisTools.tools.ntupleDefinitions import \
-        pftau_discriminators_extra, common_expressions, pftau_expressions,\
-        pftau_discriminators
+import RecoTauTag.TauAnalysisTools.tools.ntupleDefinitions as ntupleVars 
 
 # Run standard PFTau sequence
 process.runPFTau = cms.Sequence(process.PFTau)
@@ -84,9 +82,9 @@ for tag in options.tags:
     setattr(process, process_name, new_disc)
     process.runPFTau *= new_disc
     # Add discriminator to ntuple
-    setattr(pftau_discriminators_extra, "By%s" % tag, 
+    setattr(ntupleVars.pftau_discriminators_extra, "By%s" % tag, 
             cms.InputTag(process_name))
-    #print pftau_discriminators_extra
+    #print ntupleVars.pftau_discriminators_extra
 
 # MC information
 process.load("RecoTauTag.TauAnalysisTools.truthTools_cfi")

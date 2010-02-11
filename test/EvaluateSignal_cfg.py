@@ -1,6 +1,7 @@
 #!/usr/bin/env cmsRun
 
-from Evaluate import *
+import FWCore.ParameterSet.Config as cms
+from Evaluate import process, options, ntupleVars
 
 from files import testing as files 
 process.source.fileNames = cms.untracked.vstring(
@@ -10,8 +11,10 @@ process.source.fileNames = cms.untracked.vstring(
 from RecoTauTag.TauAnalysisTools.tools.ntupleTools import makeTauNtuple
 makeTauNtuple(
     process,
-    expressions = cms.PSet(common_expressions, pftau_expressions),
-    discriminators=cms.PSet(pftau_discriminators_extra, pftau_discriminators),
+    expressions = cms.PSet(ntupleVars.common_expressions, 
+                           ntupleVars.pftau_expressions),
+    discriminators=cms.PSet(ntupleVars.pftau_discriminators_extra, 
+                            ntupleVars.pftau_discriminators),
     matchingOption = "matched", # These two values must be changed!
     matchingCollection = "trueHadronicTaus")
 
