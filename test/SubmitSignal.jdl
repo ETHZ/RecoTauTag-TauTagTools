@@ -1,9 +1,0 @@
-universe = vanilla
-Executable = BuildSignal_cfg.py
-should_transfer_files = NO
-getenv = true
-Output = ztt/ztt_$(cluster)_$(process).out
-Error  = ztt/ztt_$(cluster)_$(process).err
-Log    = ztt/ztt_$(cluster)_$(process).condor
-Arguments = job=$(process) maxEvents=-1
-Queue 111
